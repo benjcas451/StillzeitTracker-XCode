@@ -6,7 +6,18 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		B1000000000000000000000E /* StillzeitWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* StillzeitWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
+		B1000000000000000000000C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A0800587302F95AE0061E525 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B10000000000000000000003;
+			remoteInfo = StillzeitWatch;
+		};
 		A080059F302F95AF0061E525 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A0800587302F95AE0061E525 /* Project object */;
@@ -23,13 +34,46 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		B1000000000000000000000D /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				B1000000000000000000000E /* StillzeitWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		B10000000000000000000001 /* StillzeitWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StillzeitWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A080058F302F95AE0061E525 /* stillzeit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = stillzeit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A080059E302F95AF0061E525 /* stillzeitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = stillzeitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A08005A8302F95AF0061E525 /* stillzeitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = stillzeitUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B10000000000000000000002 /* Exceptions for "StillzeitWatch" folder in "StillzeitWatch" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B10000000000000000000003 /* StillzeitWatch */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		B10000000000000000000004 /* StillzeitWatch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B10000000000000000000002 /* Exceptions for "StillzeitWatch" folder in "StillzeitWatch" target */,
+			);
+			path = StillzeitWatch;
+			sourceTree = "<group>";
+		};
 		A0800591302F95AE0061E525 /* stillzeit */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = stillzeit;
@@ -48,6 +92,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		B10000000000000000000006 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A080058C302F95AE0061E525 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -76,6 +127,7 @@
 			isa = PBXGroup;
 			children = (
 				A0800591302F95AE0061E525 /* stillzeit */,
+				B10000000000000000000004 /* StillzeitWatch */,
 				A08005A1302F95AF0061E525 /* stillzeitTests */,
 				A08005AB302F95AF0061E525 /* stillzeitUITests */,
 				A0800590302F95AE0061E525 /* Products */,
@@ -86,6 +138,7 @@
 			isa = PBXGroup;
 			children = (
 				A080058F302F95AE0061E525 /* stillzeit.app */,
+				B10000000000000000000001 /* StillzeitWatch.app */,
 				A080059E302F95AF0061E525 /* stillzeitTests.xctest */,
 				A08005A8302F95AF0061E525 /* stillzeitUITests.xctest */,
 			);
@@ -95,6 +148,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		B10000000000000000000003 /* StillzeitWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B1000000000000000000000A /* Build configuration list for PBXNativeTarget "StillzeitWatch" */;
+			buildPhases = (
+				B10000000000000000000005 /* Sources */,
+				B10000000000000000000006 /* Frameworks */,
+				B10000000000000000000007 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B10000000000000000000004 /* StillzeitWatch */,
+			);
+			name = StillzeitWatch;
+			packageProductDependencies = (
+			);
+			productName = StillzeitWatch;
+			productReference = B10000000000000000000001 /* StillzeitWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 		A080058E302F95AE0061E525 /* stillzeit */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A08005B2302F95AF0061E525 /* Build configuration list for PBXNativeTarget "stillzeit" */;
@@ -102,10 +177,12 @@
 				A080058B302F95AE0061E525 /* Sources */,
 				A080058C302F95AE0061E525 /* Frameworks */,
 				A080058D302F95AE0061E525 /* Resources */,
+				B1000000000000000000000D /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				B1000000000000000000000B /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				A0800591302F95AE0061E525 /* stillzeit */,
@@ -176,6 +253,9 @@
 					A080058E302F95AE0061E525 = {
 						CreatedOnToolsVersion = 26.6;
 					};
+					B10000000000000000000003 = {
+						CreatedOnToolsVersion = 26.6;
+					};
 					A080059D302F95AF0061E525 = {
 						CreatedOnToolsVersion = 26.6;
 						TestTargetID = A080058E302F95AE0061E525;
@@ -201,6 +281,7 @@
 			projectRoot = "";
 			targets = (
 				A080058E302F95AE0061E525 /* stillzeit */,
+				B10000000000000000000003 /* StillzeitWatch */,
 				A080059D302F95AF0061E525 /* stillzeitTests */,
 				A08005A7302F95AF0061E525 /* stillzeitUITests */,
 			);
@@ -208,6 +289,13 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		B10000000000000000000007 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A080058D302F95AE0061E525 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -232,6 +320,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		B10000000000000000000005 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A080058B302F95AE0061E525 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -256,6 +351,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		B1000000000000000000000B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B10000000000000000000003 /* StillzeitWatch */;
+			targetProxy = B1000000000000000000000C /* PBXContainerItemProxy */;
+		};
 		A08005A0302F95AF0061E525 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = A080058E302F95AE0061E525 /* stillzeit */;
@@ -408,12 +508,15 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.dwarftsch.stillzeit;
+				INFOPLIST_KEY_CFBundleDisplayName = Stillzeit;
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -452,12 +555,15 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.dwarftsch.stillzeit;
+				INFOPLIST_KEY_CFBundleDisplayName = Stillzeit;
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -481,9 +587,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2HNRMGYGMU;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.dwarftsch.stillzeitTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -507,9 +613,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2HNRMGYGMU;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.dwarftsch.stillzeitTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -532,9 +638,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2HNRMGYGMU;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.dwarftsch.stillzeitUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -557,9 +663,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2HNRMGYGMU;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.dwarftsch.stillzeitUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -575,9 +681,67 @@
 			};
 			name = Release;
 		};
+		B10000000000000000000008 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2HNRMGYGMU;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = StillzeitWatch/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.dwarftsch.stillzeit.watchkitapp;
+				PRODUCT_NAME = StillzeitWatch;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		B10000000000000000000009 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2HNRMGYGMU;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = StillzeitWatch/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.dwarftsch.stillzeit.watchkitapp;
+				PRODUCT_NAME = StillzeitWatch;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		B1000000000000000000000A /* Build configuration list for PBXNativeTarget "StillzeitWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B10000000000000000000008 /* Debug */,
+				B10000000000000000000009 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		A080058A302F95AE0061E525 /* Build configuration list for PBXProject "stillzeit" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
