@@ -42,7 +42,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: Stillzeit.ipa
-          asset_name: Stillzeit-v2.0.0-${{ github.run_number }}.ipa
-          tag: v2.0.0-${{ github.run_number }}
+          asset_name: Stillzeit-v2.1.0-${{ github.run_number }}.ipa
+          tag: v2.1.0-${{ github.run_number }}
           overwrite: true
-          body: "Stillzeit v2.0.0 (Lauf ${{ github.run_number }}) – unsignierte IPA inkl. eingebetteter watchOS-App"
+          body: "Stillzeit v2.1.0 (Lauf ${{ github.run_number }}) – unsignierte IPA inkl. eingebetteter watchOS-App"
