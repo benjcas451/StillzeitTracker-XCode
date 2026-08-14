@@ -20,6 +20,13 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>nunito_regular.ttf</string>
+		<string>nunito_semibold.ttf</string>
+		<string>nunito_bold.ttf</string>
+		<string>nunito_extrabold.ttf</string>
+	</array>
 	<key>WKApplication</key>
 	<true/>
 	<key>WKCompanionAppBundleIdentifier</key>

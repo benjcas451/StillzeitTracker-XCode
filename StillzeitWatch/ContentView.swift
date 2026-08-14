@@ -1,5 +1,35 @@
 import SwiftUI
 
+// Design-System „Minze & Honig" (v1.0) – die Uhr folgt den Dark-Regeln aus
+// Guide 2.8: Pastellflächen (300) mit 900er-Text als Akzente, zarte Flächen
+// als abgedunkelte 100er-Äquivalente, Fehler in Rot-300. Zuordnung wie auf
+// dem iPhone: Links=Minze, Rechts=Flieder, Beidseitig=Grau, Flasche=Honig.
+enum MhW {
+  static let minze300 = Color(red: 0xA8 / 255, green: 0xD5 / 255, blue: 0xBA / 255)
+  static let minze900 = Color(red: 0x22 / 255, green: 0x39 / 255, blue: 0x2C / 255)
+  static let minzeDunkel = Color(red: 0x26 / 255, green: 0x3B / 255, blue: 0x2F / 255)
+  static let honig300 = Color(red: 0xF7 / 255, green: 0xE8 / 255, blue: 0xA4 / 255)
+  static let honig900 = Color(red: 0x47 / 255, green: 0x3A / 255, blue: 0x17 / 255)
+  static let honigDunkel = Color(red: 0x3B / 255, green: 0x35 / 255, blue: 0x24 / 255)
+  static let flieder300 = Color(red: 0xCD / 255, green: 0xB4 / 255, blue: 0xDB / 255)
+  static let flieder900 = Color(red: 0x37 / 255, green: 0x26 / 255, blue: 0x3F / 255)
+  static let fliederDunkel = Color(red: 0x35 / 255, green: 0x2B / 255, blue: 0x3C / 255)
+  static let grau300 = Color(red: 0xC6 / 255, green: 0xCD / 255, blue: 0xC9 / 255)
+  static let grauRand = Color(red: 0x3A / 255, green: 0x40 / 255, blue: 0x3C / 255)
+  static let karte = Color(red: 0x29 / 255, green: 0x2D / 255, blue: 0x2B / 255)
+  static let textHell = Color(red: 0xEC / 255, green: 0xEF / 255, blue: 0xED / 255)
+  static let rot300 = Color(red: 0xF0 / 255, green: 0xB6 / 255, blue: 0xB1 / 255)
+}
+
+extension Font {
+  static func nunito(_ groesse: CGFloat) -> Font {
+    .custom("NunitoExtraLight-Regular", size: groesse)
+  }
+  static func nunitoBold(_ groesse: CGFloat) -> Font {
+    .custom("NunitoExtraLight-Bold", size: groesse)
+  }
+}
+
 /// Alle Blätter laufen bewusst über **einen** `.sheet`-Modifier: mehrere
 /// `.sheet`-Modifier an derselben View sind in SwiftUI nicht zugesichert, in
 /// der Praxis öffnet sich dann je nach Version nur noch ein Teil davon.
@@ -118,26 +148,26 @@ struct ContentView: View {
       if let entry = store.entries.first {
         VStack(spacing: 2) {
           Text("Letzter Eintrag")
-            .font(.caption2)
+            .font(.nunito(11))
             .foregroundStyle(.secondary)
           HStack(spacing: 5) {
             Image(systemName: icon(for: entry.side))
               .foregroundStyle(color(for: entry.side))
-            Text(entryTitle(for: entry)).font(.headline)
+            Text(entryTitle(for: entry)).font(.nunitoBold(15))
             Text(entry.date, style: .time)
-              .font(.headline)
+              .font(.nunitoBold(15))
               .monospacedDigit()
           }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
-        .background(color(for: entry.side).opacity(0.16), in: RoundedRectangle(cornerRadius: 12))
+        .background(subtleBackground(for: entry.side), in: RoundedRectangle(cornerRadius: 16))
       } else {
         Text("Noch kein Eintrag")
-          .font(.headline)
+          .font(.nunitoBold(15))
           .frame(maxWidth: .infinity)
           .padding(.vertical, 10)
-          .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+          .background(MhW.karte, in: RoundedRectangle(cornerRadius: 16))
       }
     }
   }
@@ -148,9 +178,12 @@ struct ContentView: View {
         selectedTime = nil
       } label: {
         Label("Jetzt", systemImage: selectedTime == nil ? "checkmark.circle.fill" : "clock")
-          .frame(maxWidth: .infinity)
+          .frame(maxWidth: .infinity, minHeight: 32)
+          .background(
+            selectedTime == nil ? MhW.minze300 : MhW.karte,
+            in: RoundedRectangle(cornerRadius: 16))
+          .foregroundStyle(selectedTime == nil ? MhW.minze900 : .secondary)
       }
-      .tint(selectedTime == nil ? .orange : .gray)
 
       Button {
         activeSheet = .time
@@ -158,32 +191,47 @@ struct ContentView: View {
         VStack(spacing: 1) {
           Text("Uhrzeit")
           if let selectedTime {
-            Text(selectedTime, style: .time).font(.caption2).monospacedDigit()
+            Text(selectedTime, style: .time).font(.nunito(11)).monospacedDigit()
           }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: 32)
+        .background(
+          selectedTime == nil ? MhW.karte : MhW.minze300,
+          in: RoundedRectangle(cornerRadius: 16))
+        .foregroundStyle(selectedTime == nil ? .secondary : MhW.minze900)
       }
-      .tint(selectedTime == nil ? .gray : .orange)
     }
-    .font(.caption)
-    .buttonStyle(.bordered)
+    .font(.nunitoBold(12))
+    .buttonStyle(.plain)
   }
 
   private var quickActions: some View {
     VStack(spacing: 6) {
       HStack(spacing: 6) {
-        ActionButton(title: "Links", systemImage: "chevron.left", color: .blue) {
+        ActionButton(
+          title: "Links", systemImage: "chevron.left",
+          flaeche: MhW.minze300, inhalt: MhW.minze900
+        ) {
           add(side: "Links")
         }
-        ActionButton(title: "Rechts", systemImage: "chevron.right", color: .purple) {
+        ActionButton(
+          title: "Rechts", systemImage: "chevron.right",
+          flaeche: MhW.flieder300, inhalt: MhW.flieder900
+        ) {
           add(side: "Rechts")
         }
       }
       HStack(spacing: 6) {
-        ActionButton(title: "Beidseitig", systemImage: "arrow.left.arrow.right", color: .teal) {
+        ActionButton(
+          title: "Beidseitig", systemImage: "arrow.left.arrow.right",
+          flaeche: MhW.grauRand, inhalt: MhW.textHell
+        ) {
           add(side: "Beidseitig")
         }
-        ActionButton(title: "Flasche", systemImage: "waterbottle", color: .orange) {
+        ActionButton(
+          title: "Flasche", systemImage: "waterbottle",
+          flaeche: MhW.honig300, inhalt: MhW.honig900
+        ) {
           activeSheet = .newBottle
         }
       }
@@ -196,8 +244,8 @@ struct ContentView: View {
     if let message = store.errorMessage {
       VStack(spacing: 6) {
         Text(message)
-          .font(.footnote)
-          .foregroundStyle(.orange)
+          .font(.nunito(13))
+          .foregroundStyle(MhW.rot300)
           .multilineTextAlignment(.center)
         Button(action: store.refresh) {
           Label("Erneut verbinden", systemImage: "arrow.clockwise")
@@ -213,7 +261,7 @@ struct ContentView: View {
   private var noticeMessage: some View {
     if let notice = store.notice {
       Text(notice)
-        .font(.caption2)
+        .font(.nunito(11))
         .foregroundStyle(.secondary)
         .multilineTextAlignment(.center)
     }
@@ -226,18 +274,18 @@ struct ContentView: View {
       activeSheet = .connection
     } label: {
       Label(store.statusText, systemImage: store.connection == nil ? "iphone" : "link")
-        .font(.caption2)
+        .font(.nunito(11))
         .frame(maxWidth: .infinity)
     }
     .buttonStyle(.bordered)
-    .tint(store.connection == nil ? .gray : .orange)
+    .tint(store.connection == nil ? .gray : MhW.minze300)
     .padding(.top, 8)
   }
 
   private var history: some View {
     VStack(alignment: .leading, spacing: 6) {
       Text("Letzte Einträge")
-        .font(.headline)
+        .font(.nunitoBold(15))
         .padding(.top, 8)
 
       if store.entries.isEmpty {
@@ -254,19 +302,19 @@ struct ContentView: View {
               VStack(alignment: .leading, spacing: 1) {
                 Text(entryTitle(for: entry))
                 Text(entry.date, style: .time)
-                  .font(.caption2)
+                  .font(.nunito(11))
                   .foregroundStyle(.secondary)
               }
               Spacer()
               Text(valueText(for: entry))
-                .font(.caption)
+                .font(.nunito(12))
                 .monospacedDigit()
               Image(systemName: "slider.horizontal.3")
-                .font(.caption2)
+                .font(.nunito(11))
                 .foregroundStyle(.secondary)
             }
             .padding(8)
-            .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+            .background(MhW.karte, in: RoundedRectangle(cornerRadius: 12))
           }
           .buttonStyle(.plain)
         }
@@ -314,10 +362,20 @@ struct ContentView: View {
 
   private func color(for side: String) -> Color {
     switch side {
-    case "Links": .blue
-    case "Rechts": .purple
-    case "Beidseitig": .teal
-    default: .orange
+    case "Links": MhW.minze300
+    case "Rechts": MhW.flieder300
+    case "Beidseitig": MhW.grau300
+    default: MhW.honig300
+    }
+  }
+
+  /// Zarte, abgedunkelte Fläche hinter der Letzter-Eintrag-Karte.
+  private func subtleBackground(for side: String) -> Color {
+    switch side {
+    case "Links": MhW.minzeDunkel
+    case "Rechts": MhW.fliederDunkel
+    case "Beidseitig": MhW.karte
+    default: MhW.honigDunkel
     }
   }
 }
@@ -334,18 +392,18 @@ private struct ConnectionView: View {
     ScrollView {
       VStack(spacing: 8) {
         Text("Server-Verbindung")
-          .font(.headline)
+          .font(.nunitoBold(15))
 
         Text(store.statusText)
-          .font(.body)
-          .foregroundStyle(connected ? .orange : .secondary)
+          .font(.nunito(15))
+          .foregroundStyle(connected ? MhW.minze300 : .secondary)
 
         Text(
           connected
             ? "Anfragen gehen direkt an den Server. Ist er nicht erreichbar, springt die Uhr automatisch auf das iPhone um."
             : "Alle Anfragen laufen über das iPhone. Ist dort ein Server eingerichtet, kann die Uhr die Verbindung übernehmen."
         )
-        .font(.caption2)
+        .font(.nunito(11))
         .foregroundStyle(.secondary)
         .multilineTextAlignment(.center)
 
@@ -355,8 +413,8 @@ private struct ConnectionView: View {
 
         if let message = store.errorMessage {
           Text(message)
-            .font(.caption2)
-            .foregroundStyle(.orange)
+            .font(.nunito(11))
+            .foregroundStyle(MhW.rot300)
             .multilineTextAlignment(.center)
         }
 
@@ -370,7 +428,8 @@ private struct ConnectionView: View {
           .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
-        .tint(.orange)
+        .tint(MhW.minze300)
+        .foregroundStyle(MhW.minze900)
         .disabled(store.isLoading)
 
         if connected {
@@ -395,17 +454,19 @@ private struct ConnectionView: View {
 private struct ActionButton: View {
   let title: String
   let systemImage: String
-  let color: Color
+  let flaeche: Color
+  let inhalt: Color
   let action: () -> Void
 
   var body: some View {
     Button(action: action) {
       VStack(spacing: 3) {
         Image(systemName: systemImage).font(.title3)
-        Text(title).font(.caption2).lineLimit(1).minimumScaleFactor(0.75)
+        Text(title).font(.nunitoBold(11)).lineLimit(1).minimumScaleFactor(0.75)
       }
       .frame(maxWidth: .infinity, minHeight: 48)
-      .background(color.opacity(0.22), in: RoundedRectangle(cornerRadius: 11))
+      .background(flaeche, in: RoundedRectangle(cornerRadius: 12))
+      .foregroundStyle(inhalt)
     }
   }
 }
@@ -426,7 +487,8 @@ private struct TimePicker: View {
         .labelsHidden()
       Button("Übernehmen") { onSave(date) }
         .buttonStyle(.borderedProminent)
-        .tint(.orange)
+        .tint(MhW.minze300)
+        .foregroundStyle(MhW.minze900)
     }
   }
 }
@@ -514,7 +576,7 @@ private struct BottlePicker: View {
           ForEach(["Pre", "Mutter"], id: \.self) { type in
             Button(type) { bottleType = type }
               .buttonStyle(.bordered)
-              .tint(bottleType == type ? .orange : .gray)
+              .tint(bottleType == type ? MhW.minze300 : .gray)
               .frame(maxWidth: .infinity)
           }
         }
@@ -555,7 +617,7 @@ private struct FreeValueField: View {
         Text("Übernehmen")
         Spacer()
         Text("\(max(0, value)) \(unit)")
-          .foregroundStyle(.orange)
+          .foregroundStyle(MhW.minze300)
           .monospacedDigit()
       }
     }
@@ -575,7 +637,7 @@ private struct SelectableRow: View {
         Spacer()
         if isSelected {
           Image(systemName: "checkmark")
-            .foregroundStyle(.orange)
+            .foregroundStyle(MhW.minze300)
         }
       }
     }
