@@ -6,12 +6,18 @@ extension Notification.Name {
   static let stillzeitWatchAenderung = Notification.Name("stillzeitWatchAenderung")
 }
 
+/// Hülle, um einen nicht-Sendable-Wert bewusst über eine Task-Grenze zu
+/// reichen (WCSession-replyHandler ist von jedem Thread aufrufbar).
+private struct UebergabeOhnePruefung<T>: @unchecked Sendable { let wert: T }
+
 /// Beantwortet WatchConnectivity-Anfragen der Uhr direkt gegen die
 /// konfigurierte Datenquelle (früher liefen sie über die Flutter-Engine).
 /// Protokoll identisch zur Flutter-App und zur Android/Wear-Strecke:
 ///   Anfrage: {"action": "...", "arguments": { ... }}
 ///   Antwort: {"ok": true, "data": { ... }} bzw. {"ok": false, "error": "..."}
-final class PhoneWatchBridge: NSObject, WCSessionDelegate {
+///
+/// `@unchecked Sendable`: die Klasse hält keinerlei veränderlichen Zustand.
+final class PhoneWatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
 
   static let shared = PhoneWatchBridge()
 
@@ -48,13 +54,15 @@ final class PhoneWatchBridge: NSObject, WCSessionDelegate {
       return
     }
     let arguments = message["arguments"] as? [String: Any] ?? [:]
+    let antworten = UebergabeOhnePruefung(wert: replyHandler)
+    let uebergabe = UebergabeOhnePruefung(wert: arguments)
 
     Task {
       do {
-        let data = try await Self.fuehreAus(action, arguments)
-        replyHandler(["ok": true, "data": data])
+        let data = try await Self.fuehreAus(action, uebergabe.wert)
+        antworten.wert(["ok": true, "data": data])
       } catch {
-        replyHandler(["ok": false, "error": error.localizedDescription])
+        antworten.wert(["ok": false, "error": error.localizedDescription])
       }
     }
   }

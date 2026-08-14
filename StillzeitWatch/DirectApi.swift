@@ -1,4 +1,7 @@
 import Foundation
+// SecIdentity ist ein thread-sicherer CF-Typ, im SDK aber (noch) nicht als
+// Sendable annotiert.
+@preconcurrency import Security
 
 enum DirectApiError: LocalizedError {
   /// Der Server war nicht erreichbar — es wurde garantiert nichts gesendet.
@@ -22,32 +25,27 @@ enum DirectApiError: LocalizedError {
 final class DirectApi: NSObject {
 
   private let connection: ServerConnection
-  private var identity: SecIdentity?
+  private let identity: SecIdentity?
 
-  private lazy var session: URLSession = URLSession(
-    configuration: {
-      let configuration = URLSessionConfiguration.ephemeral
-      configuration.timeoutIntervalForRequest = 15
-      configuration.waitsForConnectivity = false
-      return configuration
-    }(),
-    delegate: self,
-    delegateQueue: nil
-  )
+  // Im init erzeugt (delegate braucht self) und danach nie mehr geschrieben.
+  nonisolated(unsafe) private var session: URLSession!
 
   /// Wirft, wenn das Client-Zertifikat nicht verwendbar ist — dadurch fällt
   /// das schon beim Import auf und nicht erst beim Speichern eines Eintrags.
   init(connection: ServerConnection) throws {
     self.connection = connection
-    self.identity = nil
-    // Erst nach super.init() werfen: vorher müssten sonst alle gespeicherten
-    // Eigenschaften bereits gesetzt sein.
-    super.init()
     if connection.isMutualTLS, let cert = connection.clientCertPEM,
       let key = connection.clientKeyPEM
     {
       identity = try ClientIdentity.make(certPEM: cert, keyPEM: key)
+    } else {
+      identity = nil
     }
+    super.init()
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.timeoutIntervalForRequest = 15
+    configuration.waitsForConnectivity = false
+    session = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
   }
 
   func close() {

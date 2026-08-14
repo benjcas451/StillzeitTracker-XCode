@@ -33,13 +33,14 @@ struct WatchEntry: Identifiable {
 }
 
 extension ISO8601DateFormatter {
-  static let stillzeit: ISO8601DateFormatter = {
+  // ISO8601DateFormatter ist laut Apple-Doku thread-sicher.
+  nonisolated(unsafe) static let stillzeit: ISO8601DateFormatter = {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime]
     return formatter
   }()
 
-  static let stillzeitFractional: ISO8601DateFormatter = {
+  nonisolated(unsafe) static let stillzeitFractional: ISO8601DateFormatter = {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     return formatter

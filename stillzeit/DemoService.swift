@@ -17,7 +17,11 @@ struct EntryRow {
 /// Flutter-App (sqflite) angelegt hat – gleicher Dateiname im Documents-
 /// Ordner, gleiches Schema, gleiche Version (PRAGMA user_version = 3).
 /// Bestehende Daten werden beim Umstieg dadurch nahtlos übernommen.
-final class DemoService: EntryService {
+///
+/// `@unchecked Sendable`: Das einzige veränderliche Feld (`db`) wird
+/// ausschließlich auf der seriellen `queue` gelesen und geschrieben – der
+/// Compiler kann das bei der SQLite-C-API (OpaquePointer) nur nicht beweisen.
+final class DemoService: EntryService, @unchecked Sendable {
 
   /// Eine Verbindung für die gesamte Prozesslaufzeit: Oberfläche, Backup und
   /// Watch-Brücke dürfen sie sich nicht gegenseitig wegschließen.
@@ -190,7 +194,9 @@ final class DemoService: EntryService {
 
   // MARK: - SQLite-Handwerk
 
-  private func auf<T>(_ arbeit: @escaping (OpaquePointer) throws -> T) async throws -> T {
+  private func auf<T: Sendable>(
+    _ arbeit: @Sendable @escaping (OpaquePointer) throws -> T
+  ) async throws -> T {
     try await withCheckedThrowingContinuation { fortsetzung in
       queue.async {
         do {

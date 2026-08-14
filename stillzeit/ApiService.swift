@@ -9,21 +9,22 @@ final class ApiService: NSObject, EntryService {
   private let baseURL: String
   private let apiKey: String?
   private let certSource: CertSource?
-  private var identity: SecIdentity?
+  // Wird beim ersten Request gesetzt; parallele Erst-Requests erzeugen die
+  // Identity schlimmstenfalls doppelt (idempotent, gleicher Keychain-Eintrag).
+  nonisolated(unsafe) private var identity: SecIdentity?
 
-  private lazy var session: URLSession = URLSession(
-    configuration: {
-      let configuration = URLSessionConfiguration.ephemeral
-      configuration.timeoutIntervalForRequest = 20
-      return configuration
-    }(),
-    delegate: self,
-    delegateQueue: nil)
+  // Im init erzeugt (delegate braucht self) und danach nie mehr geschrieben;
+  // lazy wäre bei parallelen Erst-Requests nicht threadsicher.
+  nonisolated(unsafe) private var session: URLSession!
 
   init(baseURL: String, certSource: CertSource? = nil, apiKey: String? = nil) {
     self.baseURL = baseURL
     self.certSource = certSource
     self.apiKey = apiKey
+    super.init()
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.timeoutIntervalForRequest = 20
+    session = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
   }
 
   // MARK: - EntryService

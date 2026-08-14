@@ -116,7 +116,8 @@ extension Seite {
 // MARK: - Typografie: Nunito (zur Laufzeit registriert, kein Info.plist nötig)
 
 enum NunitoFont {
-  private static var registriert = false
+  // Wird nur einmal beim App-Start (StillzeitApp.init) gesetzt.
+  nonisolated(unsafe) private static var registriert = false
 
   /// Beim App-Start aufrufen. Registriert die eingebetteten TTFs.
   static func registrieren() {

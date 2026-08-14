@@ -7,8 +7,9 @@ struct ServiceError: LocalizedError {
 }
 
 /// Gemeinsame Schnittstelle für Eintrags-Quellen: die REST-API ([ApiService])
-/// oder die lokale SQLite-Datenbank ([DemoService]).
-protocol EntryService {
+/// oder die lokale SQLite-Datenbank ([DemoService]). Sendable, damit die
+/// Dienste zwischen MainActor (UI) und Hintergrund-Tasks wandern dürfen.
+protocol EntryService: Sendable {
   /// Einträge von heute & gestern (neueste zuerst).
   func getEntries() async throws -> [Entry]
 

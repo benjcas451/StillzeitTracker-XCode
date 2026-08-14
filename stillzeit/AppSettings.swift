@@ -18,7 +18,9 @@ enum DataSourceMode: String {
 /// Container, deshalb funktioniert das nahtlos).
 enum AppSettings {
 
-  private static let defaults = UserDefaults.standard
+  // Computed statt stored: UserDefaults ist thread-sicher, aber als
+  // gespeicherte Globale würde der Compiler Sendable-Warnungen melden.
+  private static var defaults: UserDefaults { .standard }
 
   private enum Key {
     static let mode = "data_source_mode"

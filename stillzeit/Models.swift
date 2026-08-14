@@ -91,13 +91,14 @@ enum IsoZeit {
     apiFormatter.string(from: date)
   }
 
-  static let fractional: ISO8601DateFormatter = {
+  // (ISO8601-)DateFormatter sind laut Apple-Doku thread-sicher.
+  nonisolated(unsafe) static let fractional: ISO8601DateFormatter = {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     return formatter
   }()
 
-  static let plain: ISO8601DateFormatter = {
+  nonisolated(unsafe) static let plain: ISO8601DateFormatter = {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime]
     return formatter
