@@ -96,7 +96,6 @@ final class DemoService: EntryService, @unchecked Sendable {
         parameter: [IsoZeit.dbString(from: Self.tagesbeginn())])
       var stats = TodayStats()
       for row in rows {
-        stats.gesamt += 1
         switch Seite.fromApi(row.seite) {
         case .links:
           stats.links += 1
@@ -110,8 +109,21 @@ final class DemoService: EntryService, @unchecked Sendable {
         case .flasche:
           stats.flasche += 1
           stats.totalMl += row.menge ?? 0
+        case .brei:
+          stats.brei += 1
+          stats.totalGBrei += row.menge ?? 0
+        case .wasser:
+          stats.wasser += 1
+          stats.totalMlWasser += row.menge ?? 0
+        case nil:
+          continue  // unbekannte Zeile überspringen
         }
       }
+      // Wie die Server-API: gesamt zählt nur Milchmahlzeiten – Brei und
+      // Wasser bewusst NICHT (Home-Assistant-Kontrakt).
+      stats.gesamt = stats.links + stats.rechts + stats.beidseitig + stats.flasche
+      // Lokale Entsprechung der Server-Option (Demo-Toggle).
+      stats.breiWasserAktiv = AppSettings.breiWasserDemoAktiv
       return stats
     }
   }
@@ -128,17 +140,18 @@ final class DemoService: EntryService, @unchecked Sendable {
         parameter: [
           IsoZeit.dbString(from: zeit),
           seite.apiValue,
-          seite.isFlasche ? (menge ?? 0) : nil,
+          seite.hatMenge ? (menge ?? 0) : nil,
+          // Flaschen-Art gibt es nur bei der Flasche.
           seite.isFlasche ? flaschenArt?.apiValue : nil,
-          seite.isFlasche ? nil : dauerMinuten,
+          seite.hatDauer ? dauerMinuten : nil,
         ])
       return Entry(
         id: sqlite3_last_insert_rowid(db),
         createTime: zeit,
         seite: seite,
-        menge: seite.isFlasche ? (menge ?? 0) : nil,
+        menge: seite.hatMenge ? (menge ?? 0) : nil,
         flaschenArt: seite.isFlasche ? flaschenArt : nil,
-        dauerMinuten: seite.isFlasche ? nil : dauerMinuten)
+        dauerMinuten: seite.hatDauer ? dauerMinuten : nil)
     }
   }
 
@@ -147,6 +160,13 @@ final class DemoService: EntryService, @unchecked Sendable {
       try self.ausfuehren(
         db, "UPDATE entries SET menge = ?, flaschen_art = ? WHERE id = ?",
         parameter: [menge, flaschenArt.apiValue, id])
+    }
+  }
+
+  func updateMenge(id: Int64, menge: Int) async throws {
+    try await auf { db in
+      try self.ausfuehren(
+        db, "UPDATE entries SET menge = ? WHERE id = ?", parameter: [menge, id])
     }
   }
 
@@ -284,11 +304,15 @@ final class DemoService: EntryService, @unchecked Sendable {
   // MARK: - Helfer
 
   private static func alsEntry(_ row: EntryRow) -> Entry? {
-    guard let zeit = IsoZeit.parse(row.createTime) else { return nil }
+    guard
+      let zeit = IsoZeit.parse(row.createTime),
+      // Zeilen unbekannter Art (z. B. aus einem neueren Backup) ausblenden.
+      let seite = Seite.fromApi(row.seite)
+    else { return nil }
     return Entry(
       id: row.id,
       createTime: zeit,
-      seite: Seite.fromApi(row.seite),
+      seite: seite,
       menge: row.menge,
       flaschenArt: FlaschenArt.fromApi(row.flaschenArt),
       dauerMinuten: row.dauerMinuten)

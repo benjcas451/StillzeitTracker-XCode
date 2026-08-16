@@ -64,6 +64,38 @@ enum AppSettings {
     set { defaults.set(newValue.trimmingCharacters(in: .whitespaces), forKey: Key.apiKeyBaseUrl) }
   }
 
+  /// Demo-Modus: lokale Entsprechung der Server-Option „Brei & Wasser“.
+  static var breiWasserDemoAktiv: Bool {
+    get { defaults.bool(forKey: "brei_wasser_demo_aktiv") }
+    set { defaults.set(newValue, forKey: "brei_wasser_demo_aktiv") }
+  }
+
+  /// Zuletzt vom Server gemeldeter Stand der Option „Brei & Wasser“ –
+  /// pro Zugang (Modus + Basis-URL) gehalten, weil die Option je Familie
+  /// geschaltet wird. Im Demo-Modus gilt stattdessen [breiWasserDemoAktiv].
+  static func breiWasserAktivFuerAktuellenZugang() -> Bool {
+    switch mode {
+    case .demo: breiWasserDemoAktiv
+    default: defaults.bool(forKey: breiWasserCacheKey())
+    }
+  }
+
+  /// Cache nach erfolgreichem `?action=heute` aktualisieren (nicht im Demo).
+  static func merkeBreiWasserAktiv(_ aktiv: Bool) {
+    guard mode != .demo else { return }
+    defaults.set(aktiv, forKey: breiWasserCacheKey())
+  }
+
+  private static func breiWasserCacheKey() -> String {
+    let baseUrl =
+      switch mode {
+      case .api: apiBaseUrl
+      case .apiKey: apiKeyBaseUrl
+      case .demo: ""
+      }
+    return "brei_wasser_aktiv:\(mode.rawValue):\(baseUrl)"
+  }
+
   private static func ladeUrl(_ key: String) -> String {
     let url = (defaults.string(forKey: key) ?? "").trimmingCharacters(in: .whitespaces)
     if url.isEmpty { return "" }

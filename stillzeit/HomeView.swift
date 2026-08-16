@@ -7,6 +7,7 @@ struct HomeView: View {
   @State private var zeigeZeitwahl = false
   @State private var flascheDialog: FlascheDialogZustand?
   @State private var dauerDialog: DauerDialogZustand?
+  @State private var mengeDialog: MengeDialogZustand?
   @State private var loeschKandidat: Entry?
 
   var body: some View {
@@ -51,6 +52,15 @@ struct HomeView: View {
             model.dauerAendern(eintrag, dauerMinuten: dauer)
           } else {
             model.anlegen(seite: zustand.seite, dauerMinuten: dauer)
+          }
+        }
+      }
+      .sheet(item: $mengeDialog) { zustand in
+        MengeDialog(zustand: zustand) { menge in
+          if let eintrag = zustand.eintrag {
+            model.mengeAendern(eintrag, menge: menge)
+          } else {
+            model.anlegen(seite: zustand.seite, menge: menge)
           }
         }
       }
@@ -100,7 +110,7 @@ struct HomeView: View {
             zeit: model.schnellZeit,
             onWaehlen: { zeigeZeitwahl = true },
             onZuruecksetzen: { model.schnellZeit = nil })
-          SchnellEingabe { seite in
+          SchnellEingabe(breiWasserAktiv: model.breiWasserAktiv) { seite in
             schnellAnlegen(seite)
           }
           eintragsListe
@@ -114,6 +124,9 @@ struct HomeView: View {
   private func schnellAnlegen(_ seite: Seite) {
     if seite.isFlasche {
       flascheDialog = FlascheDialogZustand(eintrag: nil)
+    } else if seite.istBreiWasser {
+      // Brei/Wasser brauchen immer eine Menge – Dialog in jedem Fall.
+      mengeDialog = MengeDialogZustand(seite: seite, eintrag: nil)
     } else if model.schnellZeit != nil {
       // Bei gewählter Uhrzeit wird die Dauer direkt mit abgefragt.
       dauerDialog = DauerDialogZustand(seite: seite, eintrag: nil)
@@ -145,6 +158,8 @@ struct HomeView: View {
             onBearbeiten: {
               if eintrag.seite.isFlasche {
                 flascheDialog = FlascheDialogZustand(eintrag: eintrag)
+              } else if eintrag.seite.istBreiWasser {
+                mengeDialog = MengeDialogZustand(seite: eintrag.seite, eintrag: eintrag)
               } else {
                 dauerDialog = DauerDialogZustand(seite: eintrag.seite, eintrag: eintrag)
               }
@@ -178,6 +193,14 @@ private struct StatistikKarte: View {
           StatWert(label: "Beidseitig", wert: "\(stats.beidseitig)", farbe: Seite.beidseitig.akzentText)
           StatWert(label: "Flasche", wert: "\(stats.flasche)", farbe: Seite.flasche.akzentText)
           StatWert(label: "Menge", wert: "\(stats.totalMl) ml", farbe: Seite.flasche.akzentText)
+          if stats.breiWasserAktiv {
+            StatWert(
+              label: "Brei", wert: "\(stats.brei) · \(stats.totalGBrei) g",
+              farbe: Seite.brei.akzentText)
+            StatWert(
+              label: "Wasser", wert: "\(stats.wasser) · \(stats.totalMlWasser) ml",
+              farbe: Seite.wasser.akzentText)
+          }
           StatWert(label: "Zeit", wert: "\(stats.totalMinuten) min", farbe: Mh.gruenText)
         }
       }
@@ -285,13 +308,20 @@ private struct Chip: View {
 }
 
 private struct SchnellEingabe: View {
+  let breiWasserAktiv: Bool
   let onAnlegen: (Seite) -> Void
 
   private let spalten = [GridItem(.adaptive(minimum: 150), spacing: 10)]
 
+  /// Brei/Wasser nur anbieten, wenn die Server-Option aktiv ist –
+  /// ausblenden statt deaktivieren (der Server würde sonst mit 400 ablehnen).
+  private var sichtbare: [Seite] {
+    Seite.allCases.filter { !$0.istBreiWasser || breiWasserAktiv }
+  }
+
   var body: some View {
     LazyVGrid(columns: spalten, alignment: .leading, spacing: 10) {
-      ForEach(Seite.allCases) { seite in
+      ForEach(sichtbare) { seite in
         Button {
           onAnlegen(seite)
         } label: {
@@ -379,7 +409,8 @@ extension Entry {
   }
 
   var wertText: String {
-    if seite.isFlasche { return "\(menge ?? 0) ml" }
+    // Einheit aus dem API-Feld, lokal aus der Seite abgeleitet.
+    if seite.hatMenge { return "\(menge ?? 0) \(anzeigeEinheit ?? "ml")" }
     if let dauerMinuten { return "\(dauerMinuten) min" }
     return "offen"
   }

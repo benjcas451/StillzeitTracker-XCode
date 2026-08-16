@@ -31,6 +31,7 @@ enum Mh {
   static let minze500 = fest(0x5FA07C)
   static let minze900 = fest(0x22392C)
   static let honig300 = fest(0xF7E8A4)
+  static let honig400 = fest(0xEDD374)
   static let honig900 = fest(0x473A17)
   static let flieder300 = fest(0xCDB4DB)
   static let flieder900 = fest(0x37263F)
@@ -40,12 +41,15 @@ enum Mh {
   /// Text-/icontaugliches Grün auf dem Grund (Light: 700, Dark: 300).
   static let gruenText = dyn(0x38664C, 0xA8D5BA)
   static let gelbText = dyn(0x8A6F26, 0xF7E8A4)
+  /// Brei: Honig eine Stufe dunkler als die Flasche (wie die Weboberfläche).
+  static let breiText = dyn(0x473A17, 0xEDD374)
   static let liladText = dyn(0x634472, 0xCDB4DB)
   static let grauText = dyn(0x454C47, 0xC6CDC9)
 
   // Zarte Flächen (100 bzw. Dark-Äquivalent) für Avatare/Hinweise.
   static let minzeFlaeche = dyn(0xE1F3E8, 0x263B2F)
   static let honigFlaeche = dyn(0xFBF3D3, 0x3B3524)
+  static let breiFlaeche = dyn(0xF9EDBB, 0x3B3524)
   static let fliederFlaeche = dyn(0xF1E9F6, 0x352B3C)
   static let grauFlaeche = dyn(0xEDF0EE, 0x2E332F)
 
@@ -79,6 +83,8 @@ extension Seite {
     case .rechts: Mh.flieder300
     case .beidseitig: Mh.beidseitigFlaeche
     case .flasche: Mh.honig300
+    case .brei: Mh.honig400
+    case .wasser: Mh.beidseitigFlaeche
     }
   }
 
@@ -89,6 +95,8 @@ extension Seite {
     case .rechts: Mh.flieder900
     case .beidseitig: Mh.beidseitigText
     case .flasche: Mh.honig900
+    case .brei: Mh.honig900
+    case .wasser: Mh.beidseitigText
     }
   }
 
@@ -99,6 +107,8 @@ extension Seite {
     case .rechts: Mh.fliederFlaeche
     case .beidseitig: Mh.grauFlaeche
     case .flasche: Mh.honigFlaeche
+    case .brei: Mh.breiFlaeche
+    case .wasser: Mh.grauFlaeche
     }
   }
 
@@ -109,6 +119,8 @@ extension Seite {
     case .rechts: Mh.liladText
     case .beidseitig: Mh.grauText
     case .flasche: Mh.gelbText
+    case .brei: Mh.breiText
+    case .wasser: Mh.grauText
     }
   }
 }

@@ -63,9 +63,10 @@ final class DirectApi: NSObject {
 
   func create(side: String, amount: Int?, bottleType: String?, at date: Date?) async throws {
     var body: [String: Any] = ["seite": side]
-    if side == "Flasche" {
+    if hatMenge(side) {
       body["menge"] = amount ?? 0
-      if let bottleType { body["flaschen_art"] = bottleType }
+      // flaschen_art akzeptiert der Server nur bei der Flasche (sonst 400).
+      if side == "Flasche", let bottleType { body["flaschen_art"] = bottleType }
     }
     if let date { body["create_time"] = DirectApi.timestamp.string(from: date) }
     _ = try await send("POST", query: nil, body: body)
@@ -76,10 +77,22 @@ final class DirectApi: NSObject {
     if entry.side == "Flasche" {
       body["menge"] = value
       body["flaschen_art"] = bottleType ?? entry.bottleType ?? "Pre"
+    } else if hatMenge(entry.side) {
+      // Brei/Wasser: Menge ohne Flaschen-Art (Server lehnt sie ab).
+      body["menge"] = value
     } else {
       body["dauer_minuten"] = value
     }
     _ = try await send("PATCH", query: "id=\(entry.id)", body: body)
+  }
+
+  /// Stand der Server-Option „Brei & Wasser“ (aus `?action=heute`).
+  /// Tolerant gelesen, weil PHP das Flag als Bool oder 0/1 liefern kann.
+  func breiWasserAktiv() async throws -> Bool {
+    let data = try await send("GET", query: "action=heute", body: nil)
+    if let aktiv = data["brei_wasser_aktiv"] as? Bool { return aktiv }
+    if let aktiv = data["brei_wasser_aktiv"] as? Int { return aktiv != 0 }
+    return false
   }
 
   // MARK: - Transport

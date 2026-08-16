@@ -25,6 +25,9 @@ protocol EntryService: Sendable {
   /// Menge und Inhalt eines Flaschen-Eintrags ändern.
   func updateFlasche(id: Int64, menge: Int, flaschenArt: FlaschenArt) async throws
 
+  /// Menge eines Brei-/Wasser-Eintrags ändern (ohne Flaschen-Art).
+  func updateMenge(id: Int64, menge: Int) async throws
+
   /// Dauer eines Still-Eintrags ändern.
   func updateDauer(id: Int64, dauerMinuten: Int) async throws
 

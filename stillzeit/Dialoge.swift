@@ -15,6 +15,13 @@ struct DauerDialogZustand: Identifiable {
   let eintrag: Entry?
 }
 
+struct MengeDialogZustand: Identifiable {
+  let id = UUID()
+  let seite: Seite
+  /// nil = neuen Eintrag anlegen, sonst bearbeiten.
+  let eintrag: Entry?
+}
+
 // MARK: - Flaschen-Dialog (Menge + Pre/Mutter)
 
 struct FlascheDialog: View {
@@ -49,6 +56,48 @@ struct FlascheDialog: View {
           return
         }
         onSpeichern(menge, flaschenArt)
+        dismiss()
+      }
+    }
+    .onAppear { fokus = true }
+  }
+}
+
+// MARK: - Mengen-Dialog (Brei in g, Wasser in ml — ohne Pre/Mutter)
+
+struct MengeDialog: View {
+  let zustand: MengeDialogZustand
+  let onSpeichern: (Int) -> Void
+
+  @Environment(\.dismiss) private var dismiss
+  @State private var mengeText: String
+  @State private var hinweis: String?
+  @FocusState private var fokus: Bool
+
+  init(zustand: MengeDialogZustand, onSpeichern: @escaping (Int) -> Void) {
+    self.zustand = zustand
+    self.onSpeichern = onSpeichern
+    _mengeText = State(initialValue: zustand.eintrag?.menge.map(String.init) ?? "")
+  }
+
+  private var einheit: String { zustand.seite.mengenEinheit ?? "ml" }
+
+  var body: some View {
+    DialogRahmen(
+      titel: zustand.eintrag == nil ? "\(zustand.seite.apiValue) hinzufügen" : "Menge ändern"
+    ) {
+      MhEingabefeld(
+        text: $mengeText, platzhalter: "Menge in \(einheit)", einheit: einheit, fokus: $fokus)
+      if let hinweis {
+        Text(hinweis).font(.nunito(14)).foregroundStyle(Mh.fehlerText)
+      }
+    } aktionen: {
+      DialogAktionen(onAbbrechen: { dismiss() }) {
+        guard let menge = Int(mengeText.trimmingCharacters(in: .whitespaces)), menge >= 0 else {
+          hinweis = "Bitte eine gültige Menge (≥ 0) eingeben."
+          return
+        }
+        onSpeichern(menge)
         dismiss()
       }
     }

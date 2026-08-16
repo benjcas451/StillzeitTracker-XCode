@@ -82,7 +82,7 @@ final class PhoneWatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
     case "createEntry":
       let service = createConfiguredEntryService()
       try await service.createEntry(
-        seite: Seite.fromApi(arguments["seite"] as? String),
+        seite: seiteAus(arguments),
         menge: arguments["menge"] as? Int,
         flaschenArt: FlaschenArt.fromApi(arguments["flaschen_art"] as? String),
         dauerMinuten: arguments["dauer_minuten"] as? Int,
@@ -94,13 +94,16 @@ final class PhoneWatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
       guard let id = (arguments["id"] as? Int).map(Int64.init) else {
         throw ServiceError(message: "Eintrags-ID fehlt.")
       }
-      let seite = Seite.fromApi(arguments["seite"] as? String)
+      let seite = try seiteAus(arguments)
       let service = createConfiguredEntryService()
       if seite.isFlasche {
         guard let art = FlaschenArt.fromApi(arguments["flaschen_art"] as? String) else {
           throw ServiceError(message: "Flaschenart fehlt.")
         }
         try await service.updateFlasche(id: id, menge: arguments["menge"] as? Int ?? 0, flaschenArt: art)
+      } else if seite.hatMenge {
+        // Brei/Wasser: Menge ohne Flaschen-Art (Server lehnt sie ab).
+        try await service.updateMenge(id: id, menge: arguments["menge"] as? Int ?? 0)
       } else {
         try await service.updateDauer(id: id, dauerMinuten: arguments["dauer_minuten"] as? Int ?? 0)
       }
@@ -110,6 +113,16 @@ final class PhoneWatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
     default:
       throw ServiceError(message: "Unbekannte Watch-Anfrage: \(action)")
     }
+  }
+
+  /// Die Uhr sendet nur Werte ihrer eigenen Buttons – ein unbekannter Wert
+  /// ist ein echter Fehler und wird gemeldet statt still als „Links“ gedeutet.
+  private static func seiteAus(_ arguments: [String: Any]) throws -> Seite {
+    let roh = arguments["seite"] as? String ?? ""
+    guard let seite = Seite.fromApi(roh) else {
+      throw ServiceError(message: "Unbekannte Eintragsart: \(roh)")
+    }
+    return seite
   }
 
   /// Überträgt die eingerichtete Server-Verbindung an die Uhr, damit diese
@@ -155,9 +168,25 @@ final class PhoneWatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
       if let menge = entry.menge { json["menge"] = menge }
       if let art = entry.flaschenArt { json["flaschen_art"] = art.apiValue }
       if let dauer = entry.dauerMinuten { json["dauer_minuten"] = dauer }
+      if let einheit = entry.anzeigeEinheit { json["einheit"] = einheit }
       return json
     }
-    return ["entries": liste]
+    return [
+      "entries": liste,
+      "brei_wasser_aktiv": await breiWasserAktiv(service),
+    ]
+  }
+
+  /// Stand der Server-Option für die Uhr: im Demo-Modus der lokale Toggle,
+  /// sonst frisch vom Server (und dabei den Telefon-Cache aktualisieren);
+  /// schlägt die Abfrage fehl, gilt der letzte bekannte Wert.
+  private static func breiWasserAktiv(_ service: EntryService) async -> Bool {
+    if AppSettings.mode == .demo { return AppSettings.breiWasserDemoAktiv }
+    guard let stats = try? await service.getToday() else {
+      return AppSettings.breiWasserAktivFuerAktuellenZugang()
+    }
+    AppSettings.merkeBreiWasserAktiv(stats.breiWasserAktiv)
+    return stats.breiWasserAktiv
   }
 
   private static func aenderungMelden() {

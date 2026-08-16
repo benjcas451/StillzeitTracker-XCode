@@ -149,19 +149,23 @@ Basis-URL konfiguriert der Nutzer in den Einstellungen. Alle Antworten JSON.
 | Endpunkt | Zweck |
 |---|---|
 | `GET <base>` | alle Einträge: `{"entries": [...]}` |
-| `GET <base>?action=heute` | Tagesstatistik (gesamt, links, rechts, beidseitig, flasche, total_ml, total_minuten) |
+| `GET <base>?action=heute` | Tagesstatistik (gesamt, links, rechts, beidseitig, flasche, total_ml, total_minuten + brei, wasser, total_g_brei, total_ml_wasser, brei_wasser_aktiv) |
 | `GET <base>?action=last` | letzter Eintrag |
 | `POST <base>` | Eintrag anlegen |
-| `PATCH <base>?id=42` | Menge/Flaschenart bzw. Dauer ändern |
+| `PATCH <base>?id=42` | Menge (Flasche/Brei/Wasser; Flaschenart nur Flasche) bzw. Dauer ändern |
 | `DELETE <base>?id=42` | Eintrag löschen |
 
 Eintrag: `id`, `create_time` (ISO 8601 mit Zeitzonen-Offset), `seite`
-(`Links`/`Rechts`/`Beidseitig`/`Flasche`), `menge` (ml, nur Flasche),
+(`Links`/`Rechts`/`Beidseitig`/`Flasche` sowie `Brei`/`Wasser`, wenn die
+pro Familie schaltbare Server-Option aktiv ist — `?action=heute` liefert
+`brei_wasser_aktiv` und die Zusatzfelder `brei`, `wasser`, `total_g_brei`,
+`total_ml_wasser`; `gesamt` zählt weiterhin nur Milchmahlzeiten), `menge`
+(Flasche/Wasser in ml, Brei in g), `einheit` (`ml`/`g`/null),
 `flaschen_art` (`Pre`/`Mutter`, nur Flasche), `dauer_minuten` (nur
 Still-Einträge). Fehler: `{"error": "..."}` mit passendem HTTP-Status.
-Die Query-Form (`?id=42`) ist Absicht — die Pfad-Form bräuchte
-serverseitiges URL-Rewrite. Die lokale Tabelle `entries` spiegelt exakt
-dieses Modell.
+Die Query-Form (`?id=42`) ist Absicht — sie funktioniert auf allen Hosts
+inklusive der Legacy-Route ohne `/api/`. Die lokale Tabelle `entries`
+spiegelt exakt dieses Modell.
 
 ## Design-System „Minze & Honig“ (v1.0)
 
@@ -179,7 +183,8 @@ und die `MhW`-Tokens in `StillzeitWatch/ContentView.swift`. Kernregeln:
   grünstichig (`#F6F8F6` … `#1F2221`); Rot nur semantisch
   (Fehler/Löschen: Fläche 100 `#FAE3E1`, Text 700 `#96362F`, dark 300 `#F0B6B1`).
 - **Eintragsarten (Chip-Muster, plattformübergreifend identisch):**
-  Links = Minze, Rechts = Flieder, Flasche = Honig, Beidseitig = Grau.
+  Links = Minze, Rechts = Flieder, Flasche = Honig, Beidseitig = Grau,
+  Brei = Honig eine Stufe dunkler (400), Wasser = neutrales Grau.
   Kacheln/Buttons: Fläche 300 + Text 900; Listen-Avatare: zarte Fläche
   (100 bzw. Dark-Äquivalent `#263B2F`/`#3B3524`/`#352B3C`) + Icon 700/300.
 - **Dark Mode:** Pastellflächen (300) bleiben unverändert mit 900er-Text;

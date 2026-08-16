@@ -6,10 +6,32 @@ enum Seite: String, CaseIterable, Identifiable {
   case rechts = "Rechts"
   case beidseitig = "Beidseitig"
   case flasche = "Flasche"
+  case brei = "Brei"
+  case wasser = "Wasser"
 
   var id: String { rawValue }
   var apiValue: String { rawValue }
+
+  /// Nur für Pre/Mutter-Belange (FlaschenArt) – nicht für die Mengenlogik.
   var isFlasche: Bool { self == .flasche }
+
+  /// Einträge mit Pflicht-Menge (Flasche in ml, Brei in g, Wasser in ml).
+  var hatMenge: Bool { self == .flasche || self == .brei || self == .wasser }
+
+  /// Still-Einträge, bei denen `dauer_minuten` erlaubt ist.
+  var hatDauer: Bool { !hatMenge }
+
+  /// Nur anbieten, wenn die Server-Option `brei_wasser_aktiv` an ist.
+  var istBreiWasser: Bool { self == .brei || self == .wasser }
+
+  /// Anzeigeeinheit der Menge; Fallback, wenn die API kein `einheit` liefert.
+  var mengenEinheit: String? {
+    switch self {
+    case .flasche, .wasser: "ml"
+    case .brei: "g"
+    default: nil
+    }
+  }
 
   /// SF-Symbol analog zu den Material-Icons der Android-App.
   var symbol: String {
@@ -18,11 +40,16 @@ enum Seite: String, CaseIterable, Identifiable {
     case .rechts: "chevron.right"
     case .beidseitig: "arrow.left.arrow.right"
     case .flasche: "waterbottle"
+    case .brei: "fork.knife"
+    case .wasser: "drop.fill"
     }
   }
 
-  static func fromApi(_ value: String?) -> Seite {
-    value.flatMap(Seite.init(rawValue:)) ?? .links
+  /// Unbekannte Werte liefern nil – Aufrufer blenden solche Einträge aus
+  /// (Listen) bzw. melden einen Fehler (Watch-Anfragen), statt sie wie
+  /// früher stillschweigend als „Links“ auszugeben.
+  static func fromApi(_ value: String?) -> Seite? {
+    value.flatMap(Seite.init(rawValue:))
   }
 }
 
@@ -39,17 +66,22 @@ enum FlaschenArt: String, CaseIterable, Identifiable {
   }
 }
 
-/// Ein einzelner Stillzeit-/Flaschen-Eintrag.
+/// Ein einzelner Stillzeit-/Flaschen-/Brei-/Wasser-Eintrag.
 struct Entry: Identifiable, Equatable {
   let id: Int64
   let createTime: Date
   let seite: Seite
-  /// Nur bei [Seite.flasche] gesetzt (Menge in ml), sonst nil.
+  /// Bei Einträgen mit `Seite.hatMenge` gesetzt, sonst nil.
   let menge: Int?
   /// Inhalt der Flasche (Pre oder Mutter). Bei älteren Einträgen nil.
   let flaschenArt: FlaschenArt?
   /// Nur bei Still-Einträgen gesetzt (Dauer in Minuten), sonst nil.
   let dauerMinuten: Int?
+  /// Einheit der Menge („ml“/„g“) – vom Server geliefert, lokal abgeleitet.
+  var einheit: String? = nil
+
+  /// Einheit für die Anzeige: API-Wert, sonst aus der Seite abgeleitet.
+  var anzeigeEinheit: String? { einheit ?? seite.mengenEinheit }
 }
 
 /// Tagesstatistik (`GET /api/?action=heute`).
@@ -61,6 +93,16 @@ struct TodayStats {
   var flasche = 0
   var totalMl = 0
   var totalMinuten = 0
+  /// Anzahl Brei-Einträge heute (0, solange die Option aus ist).
+  var brei = 0
+  /// Anzahl Wasser-Einträge heute.
+  var wasser = 0
+  /// Brei-Gesamtmenge heute in Gramm.
+  var totalGBrei = 0
+  /// Wasser-Gesamtmenge heute in Millilitern (getrennt von `totalMl`).
+  var totalMlWasser = 0
+  /// Server-Option „Brei & Wasser“ dieser Familie.
+  var breiWasserAktiv = false
 }
 
 // MARK: - Zeitformate

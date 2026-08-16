@@ -15,6 +15,10 @@ final class HomeViewModel: ObservableObject {
   /// Kurzmeldungen (Fehler bei Aktionen, Backup-Ergebnisse).
   @Published var meldung: String?
 
+  /// Server-Option „Brei & Wasser“ des aktiven Zugangs. Vor dem ersten
+  /// Netzwerk-Roundtrip aus dem Cache/Demo-Toggle geseedet.
+  @Published var breiWasserAktiv = AppSettings.breiWasserAktivFuerAktuellenZugang()
+
   private var service: EntryService = createConfiguredEntryService()
   private var beobachter: AnyCancellable?
 
@@ -30,6 +34,8 @@ final class HomeViewModel: ObservableObject {
   /// Verlassen der Einstellungen) und lädt anschließend neu.
   func datenquelleNeuAufbauen() {
     service = createConfiguredEntryService()
+    // Buttons sofort korrekt zeigen, bevor die erste Antwort da ist.
+    breiWasserAktiv = AppSettings.breiWasserAktivFuerAktuellenZugang()
     aktualisieren()
   }
 
@@ -41,8 +47,10 @@ final class HomeViewModel: ObservableObject {
         async let statsNeu = service.getToday()
         async let eintraegeNeu = service.getEntries()
         let (s, e) = try await (statsNeu, eintraegeNeu)
+        AppSettings.merkeBreiWasserAktiv(s.breiWasserAktiv)
         stats = s
         eintraege = e
+        breiWasserAktiv = s.breiWasserAktiv
         laedt = false
       } catch {
         fehler = error.localizedDescription
@@ -72,6 +80,12 @@ final class HomeViewModel: ObservableObject {
   func flascheAendern(_ eintrag: Entry, menge: Int, flaschenArt: FlaschenArt) {
     fuehreAus { [self] in
       try await service.updateFlasche(id: eintrag.id, menge: menge, flaschenArt: flaschenArt)
+    }
+  }
+
+  func mengeAendern(_ eintrag: Entry, menge: Int) {
+    fuehreAus { [self] in
+      try await service.updateMenge(id: eintrag.id, menge: menge)
     }
   }
 

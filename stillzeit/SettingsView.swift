@@ -173,6 +173,21 @@ struct SettingsView: View {
 
   private var backupSektion: some View {
     VStack(alignment: .leading, spacing: 12) {
+      Sektion("Brei & Wasser")
+      // Lokale Entsprechung der Server-Option: schaltet die beiden
+      // Erfassungs-Buttons im Demo-Modus frei.
+      Toggle(isOn: Binding(
+        get: { AppSettings.breiWasserDemoAktiv },
+        set: { AppSettings.breiWasserDemoAktiv = $0 })
+      ) {
+        VStack(alignment: .leading, spacing: 2) {
+          Text("Brei & Wasser erfassen").font(.nunito(16)).foregroundStyle(Mh.text)
+          Text("Zusätzliche Buttons für Brei (g) und Wasser (ml).")
+            .font(.nunito(12)).foregroundStyle(Mh.textSekundaer)
+        }
+      }
+      .tint(Mh.minze500)
+
       Sektion("Backup")
       Button {
         exportieren()
@@ -385,25 +400,29 @@ extension SettingsView {
       {"seite": "Links", "dauer_minuten": 12}
       {"seite": "Links"}
       {"seite": "Flasche", "menge": 120, "flaschen_art": "Pre"}
+      {"seite": "Brei", "menge": 90} bzw. {"seite": "Wasser", "menge": 30}
       Optional "create_time" als ISO 8601 mit Zeitzonen-Offset, z. B. 2026-06-10T14:30:00+02:00
 
     • PATCH <Basis-URL>?id=42
       Flasche ändern: {"menge": 150, "flaschen_art": "Mutter"}
+      Brei/Wasser ändern: {"menge": 120}
       Stilldauer ändern: {"dauer_minuten": 15}
 
     • DELETE <Basis-URL>?id=42
       Eintrag löschen
 
-    Gültige Werte für "seite": Links, Rechts, Beidseitig, Flasche.
+    Gültige Werte für "seite": Links, Rechts, Beidseitig, Flasche sowie – wenn die \
+    Server-Option "Brei & Wasser" der Familie aktiv ist (?action=heute liefert \
+    "brei_wasser_aktiv") – Brei und Wasser.
 
     Authentifizierung je nach Datenquelle:
     • Server (mTLS-API): Client-Zertifikat (client.crt + client.key)
     • Server (API-Key): HTTP-Header "X-API-Key: <Key>"
 
-    Ein Eintrag hat die Felder id, create_time, seite, menge (Menge in ml, nur bei Flasche), \
-    flaschen_art (Pre oder Mutter, nur bei Flasche) und dauer_minuten (optionale Stilldauer in \
-    Minuten, nur bei Links/Rechts/Beidseitig). Fehler kommen als {"error": "..."} mit passendem \
-    HTTP-Statuscode.
+    Ein Eintrag hat die Felder id, create_time, seite, menge (bei Flasche/Wasser in ml, bei \
+    Brei in g), einheit ("ml", "g" oder null), flaschen_art (Pre oder Mutter, nur bei Flasche) \
+    und dauer_minuten (optionale Stilldauer in Minuten, nur bei Links/Rechts/Beidseitig). \
+    Fehler kommen als {"error": "..."} mit passendem HTTP-Statuscode.
     """
 
   static let dbInfoText = """
@@ -420,10 +439,10 @@ extension SettingsView {
     Anzeige in lokaler Zeit
 
     • seite
-      TEXT: Links, Rechts, Beidseitig oder Flasche
+      TEXT: Links, Rechts, Beidseitig, Flasche, Brei oder Wasser
 
     • menge
-      INTEGER, Menge in ml – nur bei Flasche gesetzt, sonst NULL
+      INTEGER, Menge (Flasche/Wasser in ml, Brei in g) – sonst NULL
 
     • flaschen_art
       TEXT, Pre oder Mutter – nur bei Flasche gesetzt, bei älteren Einträgen ggf. NULL

@@ -38,10 +38,17 @@ final class ApiService: NSObject, EntryService {
   func getToday() async throws -> TodayStats {
     let data = try await send("GET", query: "action=heute", body: nil)
     func v(_ key: String) -> Int { data[key] as? Int ?? 0 }
+    // Tolerant lesen: je nach PHP-Serialisierung true/false oder 0/1.
+    let aktiv = (data["brei_wasser_aktiv"] as? Bool)
+      ?? ((data["brei_wasser_aktiv"] as? Int).map { $0 != 0 })
+      ?? false
     return TodayStats(
       gesamt: v("gesamt"), links: v("links"), rechts: v("rechts"),
       beidseitig: v("beidseitig"), flasche: v("flasche"),
-      totalMl: v("total_ml"), totalMinuten: v("total_minuten"))
+      totalMl: v("total_ml"), totalMinuten: v("total_minuten"),
+      brei: v("brei"), wasser: v("wasser"),
+      totalGBrei: v("total_g_brei"), totalMlWasser: v("total_ml_wasser"),
+      breiWasserAktiv: aktiv)
   }
 
   @discardableResult
@@ -49,11 +56,12 @@ final class ApiService: NSObject, EntryService {
     seite: Seite, menge: Int?, flaschenArt: FlaschenArt?, dauerMinuten: Int?, createTime: Date?
   ) async throws -> Entry {
     var body: [String: Any] = ["seite": seite.apiValue]
-    if seite.isFlasche {
+    if seite.hatMenge {
       body["menge"] = menge ?? 0
-      if let flaschenArt { body["flaschen_art"] = flaschenArt.apiValue }
+      // flaschen_art akzeptiert der Server nur bei der Flasche (sonst 400).
+      if seite.isFlasche, let flaschenArt { body["flaschen_art"] = flaschenArt.apiValue }
     }
-    if !seite.isFlasche, let dauerMinuten { body["dauer_minuten"] = dauerMinuten }
+    if seite.hatDauer, let dauerMinuten { body["dauer_minuten"] = dauerMinuten }
     if let createTime { body["create_time"] = IsoZeit.apiString(from: createTime) }
     let data = try await send("POST", query: nil, body: body)
     guard let entry = Self.eintragAusJson(data) else {
@@ -66,6 +74,10 @@ final class ApiService: NSObject, EntryService {
     _ = try await send(
       "PATCH", query: "id=\(id)",
       body: ["menge": menge, "flaschen_art": flaschenArt.apiValue])
+  }
+
+  func updateMenge(id: Int64, menge: Int) async throws {
+    _ = try await send("PATCH", query: "id=\(id)", body: ["menge": menge])
   }
 
   func updateDauer(id: Int64, dauerMinuten: Int) async throws {
@@ -86,8 +98,9 @@ final class ApiService: NSObject, EntryService {
         message: "Keine API-URL konfiguriert. Bitte in den Einstellungen die "
           + "Basis-URL des Servers hinterlegen.")
     }
-    // Query-Form `?id=43` statt Pfad-Form – letztere braucht serverseitiges
-    // URL-Rewrite und liefert sonst 404.
+    // Query-Form `?id=43` statt Pfad-Form. Die Pfad-Form wird inzwischen
+    // serverseitig geroutet; die Query-Form funktioniert aber auf allen Hosts
+    // inklusive der Legacy-Route ohne `/api/` – dabei bleiben.
     let text = query == nil ? baseURL : "\(baseURL)?\(query!)"
     guard let url = URL(string: text) else {
       throw ServiceError(message: "Ungültige API-URL: \(baseURL)")
@@ -148,15 +161,18 @@ final class ApiService: NSObject, EntryService {
     guard
       let id = json["id"] as? Int,
       let zeitText = json["create_time"] as? String,
-      let zeit = IsoZeit.parse(zeitText)
+      let zeit = IsoZeit.parse(zeitText),
+      // Einträge unbekannter Art (künftige Servererweiterungen) ausblenden.
+      let seite = Seite.fromApi(json["seite"] as? String)
     else { return nil }
     return Entry(
       id: Int64(id),
       createTime: zeit,
-      seite: Seite.fromApi(json["seite"] as? String),
+      seite: seite,
       menge: json["menge"] as? Int,
       flaschenArt: FlaschenArt.fromApi(json["flaschen_art"] as? String),
-      dauerMinuten: json["dauer_minuten"] as? Int)
+      dauerMinuten: json["dauer_minuten"] as? Int,
+      einheit: json["einheit"] as? String)
   }
 }
 

@@ -1,6 +1,16 @@
 import Foundation
 import WatchConnectivity
 
+/// Eintragsarten mit Pflicht-Menge (Flasche/Wasser in ml, Brei in g).
+func hatMenge(_ side: String) -> Bool {
+  side == "Flasche" || side == "Brei" || side == "Wasser"
+}
+
+/// Anzeigeeinheit, falls das iPhone kein `einheit`-Feld liefert.
+func einheit(fuer side: String) -> String {
+  side == "Brei" ? "g" : "ml"
+}
+
 struct WatchEntry: Identifiable {
   let id: Int
   let date: Date
@@ -8,6 +18,8 @@ struct WatchEntry: Identifiable {
   let amount: Int?
   let bottleType: String?
   let duration: Int?
+  /// Einheit der Menge („ml“/„g“), vom iPhone bzw. der API geliefert.
+  let unit: String?
 
   init?(_ value: [String: Any]) {
     guard
@@ -22,6 +34,7 @@ struct WatchEntry: Identifiable {
     amount = value["menge"] as? Int
     bottleType = value["flaschen_art"] as? String
     duration = value["dauer_minuten"] as? Int
+    unit = value["einheit"] as? String
   }
 
   /// Das iPhone schickt UTC-Zeitstempel mit Sekundenbruchteilen, die REST-API
@@ -60,6 +73,11 @@ final class WatchConnectivityStore: NSObject, ObservableObject {
   /// Übernommene Server-Verbindung; nil = alles läuft über das iPhone.
   @Published private(set) var connection: ServerConnection?
 
+  /// Server-Option „Brei & Wasser“ – blendet die zwei Extra-Buttons ein.
+  /// Letzter bekannter Stand wird je Quelle (Relay bzw. Basis-URL) gemerkt,
+  /// damit die Buttons schon vor der ersten Antwort richtig stehen.
+  @Published private(set) var breiWasserAktiv = false
+
   /// Statuszeile: „Direkt · API-Key“, „Direkt · mTLS“ oder „Über iPhone“.
   var statusText: String { connection?.label ?? "Über iPhone" }
 
@@ -71,6 +89,14 @@ final class WatchConnectivityStore: NSObject, ObservableObject {
     session?.delegate = self
     session?.activate()
     restoreConnection()
+    breiWasserAktiv = UserDefaults.standard.bool(forKey: flagKey)
+  }
+
+  private var flagKey: String { "brei_wasser_aktiv:\(connection?.baseURL ?? "relay")" }
+
+  private func merkeBreiWasser(_ aktiv: Bool) {
+    breiWasserAktiv = aktiv
+    UserDefaults.standard.set(aktiv, forKey: flagKey)
   }
 
   // MARK: - Aktionen
@@ -107,6 +133,8 @@ final class WatchConnectivityStore: NSObject, ObservableObject {
     connection = nil
     ServerConnectionStore.delete()
     errorMessage = nil
+    // Die Quelle wechselt – letzter bekannter Stand des neuen Wegs gilt.
+    breiWasserAktiv = UserDefaults.standard.bool(forKey: flagKey)
     refresh()
   }
 
@@ -124,6 +152,7 @@ final class WatchConnectivityStore: NSObject, ObservableObject {
       connection = candidate
       ServerConnectionStore.save(candidate)
       errorMessage = nil
+      breiWasserAktiv = UserDefaults.standard.bool(forKey: flagKey)
       // Eine Erfolgsmeldung erübrigt sich: die Statuszeile zeigt ab jetzt
       // „Direkt · …“ statt „Über iPhone“.
       refresh()
@@ -166,7 +195,13 @@ final class WatchConnectivityStore: NSObject, ObservableObject {
     do {
       switch action {
       case .load:
-        finish(try await api.entries())
+        let liste = try await api.entries()
+        // Flag tolerant mitholen: schlägt nur diese Abfrage fehl, bleibt der
+        // letzte bekannte Stand gültig.
+        if let aktiv = try? await api.breiWasserAktiv() {
+          merkeBreiWasser(aktiv)
+        }
+        finish(liste)
 
       case .create(let side, let amount, let bottleType, let date):
         try await api.create(side: side, amount: amount, bottleType: bottleType, at: date)
@@ -191,6 +226,13 @@ final class WatchConnectivityStore: NSObject, ObservableObject {
     isLoading = true
     send(action: action.relayName, arguments: action.relayArguments) { [weak self] data in
       guard let self else { return }
+      // Neue iPhone-Apps liefern das Flag im Dashboard mit; fehlt es (alte
+      // iPhone-App), bleiben die Buttons konservativ versteckt.
+      if let aktiv = data["brei_wasser_aktiv"] as? Bool {
+        self.merkeBreiWasser(aktiv)
+      } else if let aktiv = data["brei_wasser_aktiv"] as? Int {
+        self.merkeBreiWasser(aktiv != 0)
+      }
       let raw = data["entries"] as? [[String: Any]] ?? []
       self.finish(raw.compactMap(WatchEntry.init), notice: notice)
     }
@@ -279,6 +321,9 @@ extension WatchConnectivityStore.Action {
       if entry.side == "Flasche" {
         arguments["menge"] = value
         arguments["flaschen_art"] = bottleType ?? entry.bottleType ?? "Pre"
+      } else if hatMenge(entry.side) {
+        // Brei/Wasser: Menge ohne Flaschen-Art.
+        arguments["menge"] = value
       } else {
         arguments["dauer_minuten"] = value
       }

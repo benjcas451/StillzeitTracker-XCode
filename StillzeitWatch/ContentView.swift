@@ -3,12 +3,14 @@ import SwiftUI
 // Design-System „Minze & Honig" (v1.0) – die Uhr folgt den Dark-Regeln aus
 // Guide 2.8: Pastellflächen (300) mit 900er-Text als Akzente, zarte Flächen
 // als abgedunkelte 100er-Äquivalente, Fehler in Rot-300. Zuordnung wie auf
-// dem iPhone: Links=Minze, Rechts=Flieder, Beidseitig=Grau, Flasche=Honig.
+// dem iPhone: Links=Minze, Rechts=Flieder, Beidseitig=Grau, Flasche=Honig,
+// Brei=Honig eine Stufe dunkler (400), Wasser=Grau.
 enum MhW {
   static let minze300 = Color(red: 0xA8 / 255, green: 0xD5 / 255, blue: 0xBA / 255)
   static let minze900 = Color(red: 0x22 / 255, green: 0x39 / 255, blue: 0x2C / 255)
   static let minzeDunkel = Color(red: 0x26 / 255, green: 0x3B / 255, blue: 0x2F / 255)
   static let honig300 = Color(red: 0xF7 / 255, green: 0xE8 / 255, blue: 0xA4 / 255)
+  static let honig400 = Color(red: 0xED / 255, green: 0xD3 / 255, blue: 0x74 / 255)
   static let honig900 = Color(red: 0x47 / 255, green: 0x3A / 255, blue: 0x17 / 255)
   static let honigDunkel = Color(red: 0x3B / 255, green: 0x35 / 255, blue: 0x24 / 255)
   static let flieder300 = Color(red: 0xCD / 255, green: 0xB4 / 255, blue: 0xDB / 255)
@@ -36,6 +38,7 @@ extension Font {
 private enum ActiveSheet: Identifiable {
   case time
   case newBottle
+  case newMenge(side: String)
   case connection
   case edit(WatchEntry)
 
@@ -43,6 +46,7 @@ private enum ActiveSheet: Identifiable {
     switch self {
     case .time: "time"
     case .newBottle: "newBottle"
+    case .newMenge(let side): "newMenge-\(side)"
     case .connection: "connection"
     case .edit(let entry): "edit-\(entry.id)"
     }
@@ -107,6 +111,18 @@ struct ContentView: View {
             selectedTime = nil
           }
 
+        case .newMenge(let side):
+          ValuePicker(
+            title: side,
+            unit: einheit(fuer: side),
+            values: Array(stride(from: 10, through: 300, by: 10)),
+            initialValue: side == "Brei" ? 90 : 30
+          ) { amount in
+            activeSheet = nil
+            store.add(side: side, amount: amount, at: selectedTime)
+            selectedTime = nil
+          }
+
         case .connection:
           ConnectionView(store: store)
 
@@ -122,6 +138,19 @@ struct ContentView: View {
             ) { value, bottleType in
               activeSheet = nil
               store.update(entry, value: value, bottleType: bottleType)
+            }
+          } else if hatMenge(entry.side) {
+            // Brei/Wasser: Menge ändern, ohne Flaschen-Art.
+            let amount = entry.amount ?? 0
+            ValuePicker(
+              title: entry.side,
+              unit: entry.unit ?? einheit(fuer: entry.side),
+              values: Self.values(
+                Array(stride(from: 0, through: 300, by: 10)), including: amount),
+              initialValue: amount
+            ) { value in
+              activeSheet = nil
+              store.update(entry, value: value)
             }
           } else {
             let duration = entry.duration ?? 0
@@ -235,6 +264,23 @@ struct ContentView: View {
           activeSheet = .newBottle
         }
       }
+      // Nur bei aktiver Server-Option – der Server lehnt POSTs sonst ab.
+      if store.breiWasserAktiv {
+        HStack(spacing: 6) {
+          ActionButton(
+            title: "Brei", systemImage: "fork.knife",
+            flaeche: MhW.honig400, inhalt: MhW.honig900
+          ) {
+            activeSheet = .newMenge(side: "Brei")
+          }
+          ActionButton(
+            title: "Wasser", systemImage: "drop.fill",
+            flaeche: MhW.grauRand, inhalt: MhW.textHell
+          ) {
+            activeSheet = .newMenge(side: "Wasser")
+          }
+        }
+      }
     }
     .buttonStyle(.plain)
   }
@@ -340,7 +386,9 @@ struct ContentView: View {
   }
 
   private func valueText(for entry: WatchEntry) -> String {
-    if entry.side == "Flasche" { return "\(entry.amount ?? 0) ml" }
+    if hatMenge(entry.side) {
+      return "\(entry.amount ?? 0) \(entry.unit ?? einheit(fuer: entry.side))"
+    }
     return "\(entry.duration ?? 0) Min."
   }
 
@@ -356,6 +404,8 @@ struct ContentView: View {
     case "Links": "chevron.left"
     case "Rechts": "chevron.right"
     case "Beidseitig": "arrow.left.arrow.right"
+    case "Brei": "fork.knife"
+    case "Wasser": "drop.fill"
     default: "waterbottle"
     }
   }
@@ -365,6 +415,8 @@ struct ContentView: View {
     case "Links": MhW.minze300
     case "Rechts": MhW.flieder300
     case "Beidseitig": MhW.grau300
+    case "Brei": MhW.honig400
+    case "Wasser": MhW.grau300
     default: MhW.honig300
     }
   }
@@ -375,6 +427,7 @@ struct ContentView: View {
     case "Links": MhW.minzeDunkel
     case "Rechts": MhW.fliederDunkel
     case "Beidseitig": MhW.karte
+    case "Wasser": MhW.karte
     default: MhW.honigDunkel
     }
   }
