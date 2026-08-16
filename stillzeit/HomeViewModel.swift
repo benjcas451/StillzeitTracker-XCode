@@ -46,11 +46,15 @@ final class HomeViewModel: ObservableObject {
       do {
         async let statsNeu = service.getToday()
         async let eintraegeNeu = service.getEntries()
-        let (s, e) = try await (statsNeu, eintraegeNeu)
+        var (s, e) = try await (statsNeu, eintraegeNeu)
         AppSettings.merkeBreiWasserAktiv(s.breiWasserAktiv)
+        // Sichtbar nur, wenn auch das lokale Opt-in aktiv ist – die
+        // Server-Option allein blendet nichts ein.
+        let sichtbar = s.breiWasserAktiv && AppSettings.breiWasserAktiviert
+        s.breiWasserAktiv = sichtbar
         stats = s
         eintraege = e
-        breiWasserAktiv = s.breiWasserAktiv
+        breiWasserAktiv = sichtbar
         laedt = false
       } catch {
         fehler = error.localizedDescription

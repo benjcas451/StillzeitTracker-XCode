@@ -64,19 +64,24 @@ enum AppSettings {
     set { defaults.set(newValue.trimmingCharacters(in: .whitespaces), forKey: Key.apiKeyBaseUrl) }
   }
 
-  /// Demo-Modus: lokale Entsprechung der Server-Option „Brei & Wasser“.
-  static var breiWasserDemoAktiv: Bool {
-    get { defaults.bool(forKey: "brei_wasser_demo_aktiv") }
-    set { defaults.set(newValue, forKey: "brei_wasser_demo_aktiv") }
+  /// Lokales Opt-in für Brei & Wasser (Default aus). Erst wenn es der
+  /// Nutzer hier aktiviert, zeigt die App die beiden Erfassungs-Buttons –
+  /// in den Server-Modi zusätzlich nur, wenn auch die Server-Option der
+  /// Familie aktiv ist.
+  static var breiWasserAktiviert: Bool {
+    get { defaults.bool(forKey: "brei_wasser_aktiviert") }
+    set { defaults.set(newValue, forKey: "brei_wasser_aktiviert") }
   }
 
-  /// Zuletzt vom Server gemeldeter Stand der Option „Brei & Wasser“ –
-  /// pro Zugang (Modus + Basis-URL) gehalten, weil die Option je Familie
-  /// geschaltet wird. Im Demo-Modus gilt stattdessen [breiWasserDemoAktiv].
+  /// Effektive Sichtbarkeit für den aktuellen Zugang: lokales Opt-in UND
+  /// (im Server-Modus) der zuletzt gemeldete Stand der Server-Option –
+  /// pro Zugang (Modus + Basis-URL) gecacht, weil sie je Familie geschaltet
+  /// wird. Im Demo-Modus genügt das Opt-in.
   static func breiWasserAktivFuerAktuellenZugang() -> Bool {
+    guard breiWasserAktiviert else { return false }
     switch mode {
-    case .demo: breiWasserDemoAktiv
-    default: defaults.bool(forKey: breiWasserCacheKey())
+    case .demo: return true
+    default: return defaults.bool(forKey: breiWasserCacheKey())
     }
   }
 

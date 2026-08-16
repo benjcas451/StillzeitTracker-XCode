@@ -28,6 +28,7 @@ struct SettingsView: View {
             datenquelle
             if mode == .apiKey { apiKeySektion }
             if mode == .api { mtlsSektion }
+            breiWasserSektion
             if mode == .demo { backupSektion }
             erklaerung
           }
@@ -171,23 +172,33 @@ struct SettingsView: View {
     }
   }
 
-  private var backupSektion: some View {
+  private var breiWasserSektion: some View {
     VStack(alignment: .leading, spacing: 12) {
       Sektion("Brei & Wasser")
-      // Lokale Entsprechung der Server-Option: schaltet die beiden
-      // Erfassungs-Buttons im Demo-Modus frei.
+      // Lokales Opt-in (Default aus): erst dieser Schalter blendet die
+      // beiden Erfassungs-Buttons ein – in den Server-Modi zusätzlich nur,
+      // wenn auch die Server-Option der Familie aktiv ist.
       Toggle(isOn: Binding(
-        get: { AppSettings.breiWasserDemoAktiv },
-        set: { AppSettings.breiWasserDemoAktiv = $0 })
+        get: { AppSettings.breiWasserAktiviert },
+        set: { AppSettings.breiWasserAktiviert = $0 })
       ) {
         VStack(alignment: .leading, spacing: 2) {
           Text("Brei & Wasser erfassen").font(.nunito(16)).foregroundStyle(Mh.text)
-          Text("Zusätzliche Buttons für Brei (g) und Wasser (ml).")
-            .font(.nunito(12)).foregroundStyle(Mh.textSekundaer)
+          Text(
+            mode == .demo
+              ? "Zusätzliche Buttons für Brei (g) und Wasser (ml)."
+              : "Zusätzliche Buttons für Brei (g) und Wasser (ml) – erscheinen "
+                + "nur, wenn der Server die Option für diese Familie anbietet."
+          )
+          .font(.nunito(12)).foregroundStyle(Mh.textSekundaer)
         }
       }
       .tint(Mh.minze500)
+    }
+  }
 
+  private var backupSektion: some View {
+    VStack(alignment: .leading, spacing: 12) {
       Sektion("Backup")
       Button {
         exportieren()

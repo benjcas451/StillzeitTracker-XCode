@@ -159,7 +159,9 @@ Eintrag: `id`, `create_time` (ISO 8601 mit Zeitzonen-Offset), `seite`
 (`Links`/`Rechts`/`Beidseitig`/`Flasche` sowie `Brei`/`Wasser`, wenn die
 pro Familie schaltbare Server-Option aktiv ist — `?action=heute` liefert
 `brei_wasser_aktiv` und die Zusatzfelder `brei`, `wasser`, `total_g_brei`,
-`total_ml_wasser`; `gesamt` zählt weiterhin nur Milchmahlzeiten), `menge`
+`total_ml_wasser`; `gesamt` zählt weiterhin nur Milchmahlzeiten — in der
+App zusätzlich lokales Opt-in unter Einstellungen → „Brei & Wasser“,
+Default aus), `menge`
 (Flasche/Wasser in ml, Brei in g), `einheit` (`ml`/`g`/null),
 `flaschen_art` (`Pre`/`Mutter`, nur Flasche), `dauer_minuten` (nur
 Still-Einträge). Fehler: `{"error": "..."}` mit passendem HTTP-Status.

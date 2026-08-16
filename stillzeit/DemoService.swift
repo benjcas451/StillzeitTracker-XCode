@@ -122,8 +122,8 @@ final class DemoService: EntryService, @unchecked Sendable {
       // Wie die Server-API: gesamt zählt nur Milchmahlzeiten – Brei und
       // Wasser bewusst NICHT (Home-Assistant-Kontrakt).
       stats.gesamt = stats.links + stats.rechts + stats.beidseitig + stats.flasche
-      // Lokale Entsprechung der Server-Option (Demo-Toggle).
-      stats.breiWasserAktiv = AppSettings.breiWasserDemoAktiv
+      // Lokales Opt-in (im Demo gibt es keine Server-Option).
+      stats.breiWasserAktiv = AppSettings.breiWasserAktiviert
       return stats
     }
   }

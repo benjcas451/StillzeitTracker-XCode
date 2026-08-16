@@ -177,11 +177,13 @@ final class PhoneWatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
     ]
   }
 
-  /// Stand der Server-Option für die Uhr: im Demo-Modus der lokale Toggle,
-  /// sonst frisch vom Server (und dabei den Telefon-Cache aktualisieren);
-  /// schlägt die Abfrage fehl, gilt der letzte bekannte Wert.
+  /// Sichtbarkeit für die Uhr: lokales Opt-in des iPhones UND (in den
+  /// Server-Modi) die Server-Option – frisch vom Server geholt und dabei
+  /// der iPhone-Cache aktualisiert; schlägt die Abfrage fehl, gilt der
+  /// letzte bekannte Wert.
   private static func breiWasserAktiv(_ service: EntryService) async -> Bool {
-    if AppSettings.mode == .demo { return AppSettings.breiWasserDemoAktiv }
+    guard AppSettings.breiWasserAktiviert else { return false }
+    if AppSettings.mode == .demo { return true }
     guard let stats = try? await service.getToday() else {
       return AppSettings.breiWasserAktivFuerAktuellenZugang()
     }
