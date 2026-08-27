@@ -258,7 +258,8 @@ struct SettingsView: View {
           throw ServiceError(message: "Datei ließ sich nicht öffnen.")
         }
         defer { url.stopAccessingSecurityScopedResource() }
-        let rows = try LocalBackupService.parseUndValidiere(try Data(contentsOf: url))
+        let rows = try LocalBackupService.parseUndValidiere(
+          try LocalBackupService.leseBegrenzt(url))
         try await DemoService.shared.replaceAll(rows)
         meldung = "Wiederherstellung erfolgreich: \(rows.count) Einträge."
       } catch {
@@ -401,7 +402,9 @@ extension SettingsView {
       Alle Einträge: {"entries": [...]}
 
     • GET <Basis-URL>?action=heute
-      Tagesstatistik: gesamt, links, rechts, beidseitig, flasche, total_ml, total_minuten
+      Tagesstatistik: gesamt, links, rechts, beidseitig, flasche, total_ml, total_minuten \
+    sowie brei, wasser, total_g_brei, total_ml_wasser und brei_wasser_aktiv. \
+    "gesamt" zählt dabei weiterhin nur Milchmahlzeiten.
 
     • GET <Basis-URL>?action=last
       Letzter Eintrag (oder leeres Objekt)
@@ -463,5 +466,23 @@ extension SettingsView {
 
     Die Server-API verwendet dasselbe Datenmodell, Einträge sind also identisch aufgebaut \
     (id, create_time, seite, menge, flaschen_art, dauer_minuten).
+
+    Sicherung & Gerätewechsel
+
+    Die Einträge liegen in der SQLite-Datei im app-privaten Speicher und werden \
+    vom iCloud-Backup mitgesichert – nach einer Wiederherstellung sind sie also wieder da.
+
+    Der API-Key liegt dagegen nicht in den Einstellungen, sondern in der Keychain. \
+    Er wandert beim Direkttransfer auf ein neues Gerät (Schnellstart) und im \
+    verschlüsselten Backup über den Computer mit, lässt sich aus einem \
+    iCloud-Backup aber nicht wiederherstellen. Das ist Absicht: der Schlüssel \
+    soll nicht auf fremden Servern liegen. Nach einer Wiederherstellung aus \
+    iCloud muss er einmal neu eingetragen werden.
+
+    Client-Zertifikate (client.crt / client.key) liegen im App-Ordner der \
+    Dateien-App und sind nach einem Gerätewechsel gegebenenfalls neu abzulegen.
+
+    Unabhängig davon lässt sich hier jederzeit ein eigenes Backup als \
+    JSON-Datei sichern und wieder einspielen.
     """
 }
