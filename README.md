@@ -100,7 +100,9 @@ stillzeit/                       iPhone-App
   DemoService.swift              lokale SQLite (C-API, sqflite-kompatibel)
   ApiService.swift               REST-Client (URLSession; PATCH + mTLS)
   ClientIdentity.swift           PEM (crt/key) -> SecIdentity (Keychain), inkl. PKCS#8-Parser
-  CertSource.swift               Documents-Ordner als Zertifikatsquelle
+  CertSource.swift               Zertifikatsquelle: App-Ordner oder frei
+                                 gewählter Ordner (security-scoped Bookmark)
+  AppOrdner.swift                hält den App-Ordner in der Dateien-App sichtbar
   AppSettings.swift              UserDefaults + Flutter-Migration
   LocalBackupService.swift       JSON-Backup (Format kompatibel zu Android/Flutter)
   PhoneWatchBridge.swift         WatchConnectivity-Endpunkt für die Uhr
@@ -197,6 +199,15 @@ Verbindung in `ServerConnectionStore` mit demselben Attribut ab.
 
 Client-Zertifikate (`client.crt` / `client.key`) liegen im App-Ordner der
 Dateien-App und sind nach einem Gerätewechsel gegebenenfalls neu abzulegen.
+Damit dieser Ordner dort überhaupt auftaucht, legt `AppOrdner` beim Start
+eine Hinweisdatei an, solange er sonst leer ist – iOS blendet leere
+App-Ordner aus.
+
+Alternativ lässt sich unter *Einstellungen → Server (mTLS-API)* ein
+beliebiger anderer Ordner auswählen. Er wird als security-scoped Bookmark
+gespeichert. Nach einer Wiederherstellung auf einem neuen Gerät zeigt das
+Bookmark ins Leere; die App meldet das und bittet darum, den Ordner erneut
+auszuwählen.
 
 Unabhängig davon gibt es das manuelle Backup unter *Einstellungen → Backup*.
 
