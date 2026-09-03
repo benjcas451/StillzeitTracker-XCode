@@ -8,7 +8,7 @@ struct SettingsView: View {
   @State private var apiUrl = AppSettings.apiBaseUrl
   @State private var apiKeyUrl = AppSettings.apiKeyBaseUrl
   @State private var apiKey = AppSettings.apiKey
-  @State private var apiKeySichtbar = false
+  @State private var mtlsApiKey = AppSettings.mtlsApiKey
   @State private var certsOk = CertSource().sindVorhanden
   @State private var meldung: String?
   @State private var infoTitel: String?
@@ -110,35 +110,10 @@ struct SettingsView: View {
     VStack(alignment: .leading, spacing: 12) {
       Sektion("Server (API-Key)")
       UrlFeld(wert: $apiKeyUrl, fokus: $urlFokus) { AppSettings.apiKeyBaseUrl = $0 }
-      HStack {
-        Group {
-          if apiKeySichtbar {
-            TextField("API-Key (optional)", text: $apiKey)
-          } else {
-            SecureField("API-Key (optional)", text: $apiKey)
-          }
-        }
-        .font(.nunito(16))
-        .focused($keyFokus)
-        .autocorrectionDisabled()
-        .textInputAutocapitalization(.never)
-        .onChange(of: apiKey) { neu in AppSettings.apiKey = neu }
-        Button {
-          apiKeySichtbar.toggle()
-        } label: {
-          Image(systemName: apiKeySichtbar ? "eye.slash" : "eye")
-            .foregroundStyle(Mh.textSekundaer)
-        }
-      }
-      .padding(.horizontal, 14)
-      .frame(minHeight: 44)
-      .background(Mh.feldFlaeche)
-      .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-      .overlay(
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
-          .strokeBorder(keyFokus ? Mh.minze500 : Mh.rand, lineWidth: 1.5))
-      Text("Empfohlen. Ohne API-Key nur für interne Testzwecke.")
-        .font(.nunito(12)).foregroundStyle(Mh.textSekundaer)
+      ApiKeyFeld(
+        wert: $apiKey, fokus: $keyFokus,
+        hinweis: "Empfohlen. Ohne API-Key nur für interne Testzwecke."
+      ) { AppSettings.apiKey = $0 }
     }
   }
 
@@ -146,6 +121,13 @@ struct SettingsView: View {
     VStack(alignment: .leading, spacing: 12) {
       Sektion("Server (mTLS-API)")
       UrlFeld(wert: $apiUrl, fokus: $urlFokus) { AppSettings.apiBaseUrl = $0 }
+      // Zusätzlich zum Client-Zertifikat: Server, die beides prüfen, brauchen
+      // den Key im X-API-Key-Header. Leer lassen = reines mTLS.
+      ApiKeyFeld(
+        wert: $mtlsApiKey, fokus: $keyFokus,
+        hinweis: "Nur nötig, wenn der Server zusätzlich zum Zertifikat einen "
+          + "Key erwartet. Leer lassen für reines mTLS."
+      ) { AppSettings.mtlsApiKey = $0 }
       HStack(spacing: 12) {
         Image(systemName: certsOk ? "checkmark.circle.fill" : "xmark.circle.fill")
           .foregroundStyle(certsOk ? Mh.gruenText : Mh.fehlerText)
@@ -330,6 +312,50 @@ private struct UrlFeld: View {
   }
 }
 
+/// Eingabefeld für einen API-Key: verdeckt, mit Auge zum Aufdecken.
+private struct ApiKeyFeld: View {
+  @Binding var wert: String
+  var fokus: FocusState<Bool>.Binding
+  let hinweis: String
+  let onAenderung: (String) -> Void
+
+  @State private var sichtbar = false
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      HStack {
+        Group {
+          if sichtbar {
+            TextField("API-Key (optional)", text: $wert)
+          } else {
+            SecureField("API-Key (optional)", text: $wert)
+          }
+        }
+        .font(.nunito(16))
+        .focused(fokus)
+        .autocorrectionDisabled()
+        .textInputAutocapitalization(.never)
+        .onChange(of: wert) { neu in onAenderung(neu) }
+        Button {
+          sichtbar.toggle()
+        } label: {
+          Image(systemName: sichtbar ? "eye.slash" : "eye")
+            .foregroundStyle(Mh.textSekundaer)
+        }
+      }
+      .padding(.horizontal, 14)
+      .frame(minHeight: 44)
+      .background(Mh.feldFlaeche)
+      .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+      .overlay(
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+          .strokeBorder(fokus.wrappedValue ? Mh.minze500 : Mh.rand, lineWidth: 1.5))
+      Text(hinweis)
+        .font(.nunito(12)).foregroundStyle(Mh.textSekundaer)
+    }
+  }
+}
+
 private struct InfoButton: View {
   let titel: String
   let symbol: String
@@ -430,7 +456,8 @@ extension SettingsView {
     "brei_wasser_aktiv") – Brei und Wasser.
 
     Authentifizierung je nach Datenquelle:
-    • Server (mTLS-API): Client-Zertifikat (client.crt + client.key)
+    • Server (mTLS-API): Client-Zertifikat (client.crt + client.key), optional \
+    zusätzlich der Header "X-API-Key: <Key>"
     • Server (API-Key): HTTP-Header "X-API-Key: <Key>"
 
     Ein Eintrag hat die Felder id, create_time, seite, menge (bei Flasche/Wasser in ml, bei \
@@ -472,12 +499,12 @@ extension SettingsView {
     Die Einträge liegen in der SQLite-Datei im app-privaten Speicher und werden \
     vom iCloud-Backup mitgesichert – nach einer Wiederherstellung sind sie also wieder da.
 
-    Der API-Key liegt dagegen nicht in den Einstellungen, sondern in der Keychain. \
-    Er wandert beim Direkttransfer auf ein neues Gerät (Schnellstart) und im \
-    verschlüsselten Backup über den Computer mit, lässt sich aus einem \
-    iCloud-Backup aber nicht wiederherstellen. Das ist Absicht: der Schlüssel \
-    soll nicht auf fremden Servern liegen. Nach einer Wiederherstellung aus \
-    iCloud muss er einmal neu eingetragen werden.
+    Die API-Keys liegen dagegen nicht in den Einstellungen, sondern in der Keychain. \
+    Sie wandern beim Direkttransfer auf ein neues Gerät (Schnellstart) und im \
+    verschlüsselten Backup über den Computer mit, lassen sich aus einem \
+    iCloud-Backup aber nicht wiederherstellen. Das ist Absicht: die Schlüssel \
+    sollen nicht auf fremden Servern liegen. Nach einer Wiederherstellung aus \
+    iCloud sind sie einmal neu einzutragen.
 
     Client-Zertifikate (client.crt / client.key) liegen im App-Ordner der \
     Dateien-App und sind nach einem Gerätewechsel gegebenenfalls neu abzulegen.

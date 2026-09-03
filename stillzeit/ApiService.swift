@@ -1,8 +1,9 @@
 import Foundation
 import Security
 
-/// Spricht die Stillzeit-Tracker-REST-API an. Authentifizierung wahlweise per
-/// mTLS-Client-Zertifikat ([certSource]) oder API-Key (`X-API-Key`-Header).
+/// Spricht die Stillzeit-Tracker-REST-API an. Authentifizierung per
+/// mTLS-Client-Zertifikat (`certSource`), per API-Key (`X-API-Key`-Header)
+/// oder per beidem zugleich.
 /// Endpunkte und JSON-Felder identisch zur Flutter-/Android-App.
 final class ApiService: NSObject, EntryService {
 

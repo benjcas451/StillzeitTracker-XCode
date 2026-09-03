@@ -151,6 +151,9 @@ final class PhoneWatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
         "base_url": baseUrl,
         "client_cert": cert.base64EncodedString(),
         "client_key": key.base64EncodedString(),
+        // Optionaler Zusatz-Key: fehlt er, bleibt das Feld leer und die Uhr
+        // spricht wie bisher rein per Zertifikat.
+        "api_key": AppSettings.mtlsApiKey,
       ]
     }
   }
