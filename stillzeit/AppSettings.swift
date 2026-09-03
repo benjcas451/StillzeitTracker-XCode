@@ -56,7 +56,7 @@ enum AppSettings {
       (defaults.string(forKey: Key.apiKey) ?? defaults.string(forKey: "flutter." + Key.apiKey))?
       .trimmingCharacters(in: .whitespaces) ?? ""
     if !klartext.isEmpty {
-      ApiKeyStore.speichere(klartext)
+      ApiKeyStore.speichere(klartext, fuer: .apiKeyModus)
     }
     defaults.removeObject(forKey: Key.apiKey)
     defaults.removeObject(forKey: "flutter." + Key.apiKey)
@@ -68,10 +68,21 @@ enum AppSettings {
     set { defaults.set(newValue.rawValue, forKey: Key.mode) }
   }
 
-  /// Liegt in der Keychain statt in den UserDefaults – siehe `ApiKeyStore`.
+  /// API-Key für den Modus `.apiKey`. Liegt in der Keychain statt in den
+  /// UserDefaults – siehe `ApiKeyStore`.
   static var apiKey: String {
-    get { ApiKeyStore.lade() }
-    set { ApiKeyStore.speichere(newValue.trimmingCharacters(in: .whitespaces)) }
+    get { ApiKeyStore.lade(.apiKeyModus) }
+    set { ApiKeyStore.speichere(newValue.trimmingCharacters(in: .whitespaces), fuer: .apiKeyModus) }
+  }
+
+  /// Optionaler API-Key **zusätzlich** zum Client-Zertifikat im Modus `.api`.
+  /// Manche Server prüfen beides: mTLS sichert den Transportweg, der Key
+  /// identifiziert darüber hinaus den Zugang. Eigener Keychain-Eintrag, damit
+  /// der Wechsel zwischen den beiden Server-Modi nicht den jeweils anderen
+  /// Key überschreibt.
+  static var mtlsApiKey: String {
+    get { ApiKeyStore.lade(.mtlsZusatz) }
+    set { ApiKeyStore.speichere(newValue.trimmingCharacters(in: .whitespaces), fuer: .mtlsZusatz) }
   }
 
   /// Basis-URL der mTLS-API; leer, solange keine hinterlegt ist.
@@ -141,13 +152,20 @@ enum AppSettings {
 private enum ApiKeyStore {
 
   private static let service = "org.dwarftsch.stillzeit"
-  private static let account = "api-key"
 
-  static func lade() -> String {
+  /// Welcher Key gemeint ist – jeder liegt unter eigenem Keychain-Account.
+  enum Ablage: String {
+    /// Der Key des Modus `.apiKey` (Account-Name unverändert seit 2.2.0).
+    case apiKeyModus = "api-key"
+    /// Der optionale Zusatz-Key des mTLS-Modus.
+    case mtlsZusatz = "mtls-api-key"
+  }
+
+  static func lade(_ ablage: Ablage) -> String {
     let query: [String: Any] = [
       kSecClass as String: kSecClassGenericPassword,
       kSecAttrService as String: service,
-      kSecAttrAccount as String: account,
+      kSecAttrAccount as String: ablage.rawValue,
       kSecReturnData as String: true,
       kSecMatchLimit as String: kSecMatchLimitOne,
     ]
@@ -161,24 +179,24 @@ private enum ApiKeyStore {
 
   /// Ein leerer Key bedeutet „kein Key hinterlegt“ – dann bleibt auch nichts
   /// in der Keychain liegen.
-  static func speichere(_ key: String) {
-    loesche()
+  static func speichere(_ key: String, fuer ablage: Ablage) {
+    loesche(ablage)
     guard !key.isEmpty else { return }
     let item: [String: Any] = [
       kSecClass as String: kSecClassGenericPassword,
       kSecAttrService as String: service,
-      kSecAttrAccount as String: account,
+      kSecAttrAccount as String: ablage.rawValue,
       kSecValueData as String: Data(key.utf8),
       kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
     ]
     SecItemAdd(item as CFDictionary, nil)
   }
 
-  static func loesche() {
+  static func loesche(_ ablage: Ablage) {
     let query: [String: Any] = [
       kSecClass as String: kSecClassGenericPassword,
       kSecAttrService as String: service,
-      kSecAttrAccount as String: account,
+      kSecAttrAccount as String: ablage.rawValue,
     ]
     SecItemDelete(query as CFDictionary)
   }

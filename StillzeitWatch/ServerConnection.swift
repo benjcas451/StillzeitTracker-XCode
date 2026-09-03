@@ -5,7 +5,8 @@ import Foundation
 struct ServerConnection: Codable {
   /// Basis-URL inklusive abschließendem Slash.
   let baseURL: String
-  /// Wird als `X-API-Key` mitgesendet; nil im mTLS-Modus.
+  /// Wird als `X-API-Key` mitgesendet; im mTLS-Modus optional (nur, wenn der
+  /// Server zusätzlich zum Zertifikat einen Key verlangt).
   let apiKey: String?
   /// PEM-Bytes des Client-Zertifikats; nil im API-Key-Modus.
   let clientCertPEM: Data?
@@ -15,7 +16,10 @@ struct ServerConnection: Codable {
   var isMutualTLS: Bool { clientCertPEM != nil && clientKeyPEM != nil }
 
   /// Kurzbeschreibung für die Statusanzeige auf der Uhr.
-  var label: String { isMutualTLS ? "Direkt · mTLS" : "Direkt · API-Key" }
+  var label: String {
+    guard isMutualTLS else { return "Direkt · API-Key" }
+    return apiKey == nil ? "Direkt · mTLS" : "Direkt · mTLS + Key"
+  }
 
   var url: URL? { URL(string: baseURL) }
 }
@@ -41,7 +45,10 @@ extension ServerConnection {
         let cert = Data(base64Encoded: certText),
         let key = Data(base64Encoded: keyText)
       else { return nil }
-      self.init(baseURL: normalized, apiKey: nil, clientCertPEM: cert, clientKeyPEM: key)
+      // Zusatz-Key optional: ältere iPhone-Versionen senden das Feld gar
+      // nicht, dann bleibt es wie bisher bei reinem mTLS.
+      let zusatzKey = (reply["api_key"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+      self.init(baseURL: normalized, apiKey: zusatzKey, clientCertPEM: cert, clientKeyPEM: key)
 
     default:
       return nil

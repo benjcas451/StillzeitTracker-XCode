@@ -41,7 +41,11 @@ protocol EntryService: Sendable {
 func createConfiguredEntryService() -> EntryService {
   switch AppSettings.mode {
   case .api:
-    ApiService(baseURL: AppSettings.apiBaseUrl, certSource: CertSource())
+    // Zusatz-Key optional: leer bedeutet „nur mTLS“, dann geht wie bisher
+    // kein X-API-Key-Header raus.
+    ApiService(
+      baseURL: AppSettings.apiBaseUrl, certSource: CertSource(),
+      apiKey: AppSettings.mtlsApiKey.isEmpty ? nil : AppSettings.mtlsApiKey)
   case .apiKey:
     ApiService(baseURL: AppSettings.apiKeyBaseUrl, apiKey: AppSettings.apiKey)
   case .demo:

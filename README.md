@@ -111,7 +111,11 @@ StillzeitWatch/                  watchOS-App (eigenständig lauffähige UI,
 ```
 
 **Datenquellen (vom Nutzer wählbar):** Server per mTLS-Client-Zertifikat,
-Server per API-Key (`X-API-Key`-Header) oder lokale SQLite ohne Sync.
+Server per API-Key (`X-API-Key`-Header) oder lokale SQLite ohne Sync. Im
+mTLS-Modus lässt sich seit 2.2.2 **zusätzlich** ein API-Key hinterlegen
+(eigener Keychain-Account `mtls-api-key`, getrennt vom `api-key` des
+API-Key-Modus) — für Server, die beides prüfen. Bleibt das Feld leer, geht
+wie bisher kein `X-API-Key`-Header raus.
 
 ### Concurrency-Konventionen
 
@@ -136,9 +140,9 @@ Antwort:  {"ok": true, "data": { ... }}  bzw.  {"ok": false, "error": "..."}
 ```
 
 Aktionen: `getConnection` (überträgt die Server-Konfiguration des Telefons,
-bei mTLS inkl. PEM als Base64 — die Uhr kann danach direkt mit dem Server
-sprechen und fällt bei Nichterreichbarkeit automatisch auf das iPhone
-zurück), `getDashboard` (letzte 12 Einträge), `createEntry`, `updateEntry`.
+bei mTLS inkl. PEM als Base64 und – falls hinterlegt – dem zusätzlichen
+`api_key` — die Uhr kann danach direkt mit dem Server sprechen und fällt bei
+Nichterreichbarkeit automatisch auf das iPhone zurück), `getDashboard` (letzte 12 Einträge), `createEntry`, `updateEntry`.
 **Dieses Protokoll ist byte-identisch zur Android/Wear-Strecke** —
 Änderungen immer in beiden Repos nachziehen.
 
@@ -179,15 +183,16 @@ Auf iOS gibt es kein Gegenstück zu Androids `backup_rules.xml` /
 | | iCloud-Backup | Direkttransfer (Schnellstart) |
 |---|---|---|
 | Einträge (SQLite) | ✅ | ✅ |
-| API-Key (Keychain) | ❌ | ✅ |
+| API-Keys (Keychain) | ❌ | ✅ |
 | Client-Zertifikat | ❌ | ❌ |
 
-Der API-Key liegt in der Keychain, mit `kSecAttrAccessibleAfterFirstUnlock`
-und **ohne** `kSecAttrSynchronizable`. Damit ist er beim Direkttransfer und
+Die API-Keys (der des API-Key-Modus und der optionale Zusatz-Key des
+mTLS-Modus) liegen in der Keychain, mit `kSecAttrAccessibleAfterFirstUnlock`
+und **ohne** `kSecAttrSynchronizable`. Damit sind sie beim Direkttransfer und
 im verschlüsselten Finder-Backup dabei, aus einem iCloud-Backup dagegen nicht
 wiederherstellbar — die iOS-Entsprechung der Android-Entscheidung
 „`<device-transfer>` ja, `<cloud-backup>` nein“. Nach einer Wiederherstellung
-aus iCloud ist er einmal neu einzutragen. Die Uhr legt ihre übernommene
+aus iCloud sind sie einmal neu einzutragen. Die Uhr legt ihre übernommene
 Verbindung in `ServerConnectionStore` mit demselben Attribut ab.
 
 Client-Zertifikate (`client.crt` / `client.key`) liegen im App-Ordner der
