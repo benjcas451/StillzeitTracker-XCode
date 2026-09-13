@@ -78,7 +78,8 @@ final class WatchConnectivityStore: NSObject, ObservableObject {
   /// damit die Buttons schon vor der ersten Antwort richtig stehen.
   @Published private(set) var breiWasserAktiv = false
 
-  /// Statuszeile: „Direkt · API-Key“, „Direkt · mTLS“ oder „Über iPhone“.
+  /// Statuszeile: „Direkt · API-Key“, „Direkt · mTLS“, „Direkt · Cloudflare“
+  /// oder „Über iPhone“.
   var statusText: String { connection?.label ?? "Über iPhone" }
 
   private var direct: DirectApi?
@@ -213,6 +214,10 @@ final class WatchConnectivityStore: NSObject, ObservableObject {
         try await api.update(entry, value: value, bottleType: bottleType)
         perform(.load)
       }
+    } catch DirectApiError.accessAbgewiesen(let grund) {
+      // Am Rand abgefangen, der Server hat die Anfrage nie gesehen — der
+      // Umweg über das iPhone ist damit genauso gefahrlos wie bei .unreachable.
+      relay(action, notice: grund)
     } catch DirectApiError.unreachable(_) {
       // Der Server war gar nicht erreichbar — nichts wurde gesendet, also ist
       // der Umweg über das iPhone gefahrlos.

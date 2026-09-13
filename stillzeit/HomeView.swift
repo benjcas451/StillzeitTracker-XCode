@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
   @StateObject private var model = HomeViewModel()
+  @Environment(\.scenePhase) private var szenenPhase
 
   @State private var zeigeEinstellungen = false
   @State private var zeigeZeitwahl = false
@@ -86,6 +87,12 @@ struct HomeView: View {
         Text(model.meldung ?? "")
       }
       .task { model.aktualisieren() }
+      // Rückkehr aus dem Hintergrund: nachladen und dabei die Warteschlange
+      // abarbeiten – zwischendurch kann die Verbindung wiedergekommen sein,
+      // ohne dass die Wache lief.
+      .onChange(of: szenenPhase) { neu in
+        if neu == .active { model.aktualisieren() }
+      }
     }
   }
 
@@ -100,6 +107,14 @@ struct HomeView: View {
     } else {
       ScrollView {
         VStack(alignment: .leading, spacing: 16) {
+          // Offline-Hinweis über allem: der Nutzer soll sofort sehen, dass
+          // er zwar weiterarbeiten kann, der Stand aber noch nicht beim
+          // Server ist.
+          if let grund = model.offlineGrund {
+            OfflineBanner(grund: grund, ausstehend: model.ausstehend)
+          } else if model.ausstehend > 0 {
+            OfflineBanner(grund: nil, ausstehend: model.ausstehend)
+          }
           // App-Titel im Inhalt statt in der Toolbar: iOS faltet Text-Items
           // dort in ein Überlauf-Menü.
           Text("🤱 Stillzeit")
@@ -155,6 +170,7 @@ struct HomeView: View {
         ForEach(gruppen[tag] ?? []) { eintrag in
           EintragsKachel(
             eintrag: eintrag,
+            ausstehend: model.ausstehendeIds.contains(eintrag.id),
             onBearbeiten: {
               if eintrag.seite.isFlasche {
                 flascheDialog = FlascheDialogZustand(eintrag: eintrag)
@@ -341,6 +357,8 @@ private struct SchnellEingabe: View {
 
 private struct EintragsKachel: View {
   let eintrag: Entry
+  /// Der Eintrag wartet noch auf die Übertragung zum Server.
+  let ausstehend: Bool
   let onBearbeiten: () -> Void
   let onLoeschen: () -> Void
 
@@ -355,9 +373,17 @@ private struct EintragsKachel: View {
         }
         VStack(alignment: .leading, spacing: 2) {
           Text(eintrag.titel).font(.nunito(16)).foregroundStyle(Mh.text)
-          Text(eintrag.createTime.formatted(date: .omitted, time: .shortened))
-            .font(.nunito(14))
-            .foregroundStyle(Mh.textSekundaer)
+          HStack(spacing: 6) {
+            Text(eintrag.createTime.formatted(date: .omitted, time: .shortened))
+              .font(.nunito(14))
+              .foregroundStyle(Mh.textSekundaer)
+            if ausstehend {
+              Image(systemName: "clock.arrow.circlepath")
+                .font(.system(size: 12))
+                .foregroundStyle(Mh.honig900)
+                .accessibilityLabel("Wartet auf Übertragung")
+            }
+          }
         }
         Spacer(minLength: 8)
         Text(eintrag.wertText).font(.nunitoBold(16)).foregroundStyle(Mh.text)
@@ -429,5 +455,43 @@ extension Array where Element: Hashable {
   func einmalig() -> [Element] {
     var gesehen = Set<Element>()
     return filter { gesehen.insert($0).inserted }
+  }
+}
+
+/// Hinweisleiste über der Liste: Verbindung weg, App weiter benutzbar.
+private struct OfflineBanner: View {
+  /// Grund der abgebrochenen Verbindung; nil heisst „wieder online, aber es
+  /// wartet noch etwas auf die Übertragung“.
+  let grund: String?
+  let ausstehend: Int
+
+  var body: some View {
+    HStack(alignment: .top, spacing: 10) {
+      Image(systemName: grund == nil ? "arrow.up.circle" : "wifi.slash")
+        .font(.system(size: 16, weight: .semibold))
+        .foregroundStyle(Mh.honig900)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(titel).font(.nunitoBold(14)).foregroundStyle(Mh.honig900)
+        Text(untertitel).font(.nunito(12)).foregroundStyle(Mh.honig900.opacity(0.85))
+      }
+      Spacer(minLength: 0)
+    }
+    .padding(12)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Mh.honig300)
+    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+  }
+
+  private var titel: String {
+    guard let grund else { return "Übertragung läuft" }
+    return "Offline-Modus – \(grund)"
+  }
+
+  private var untertitel: String {
+    guard ausstehend > 0 else {
+      return "Angezeigt wird der zuletzt geladene Stand."
+    }
+    let was = ausstehend == 1 ? "Eine Änderung wartet" : "\(ausstehend) Änderungen warten"
+    return "\(was) auf die Übertragung und geht raus, sobald die Verbindung steht."
   }
 }
