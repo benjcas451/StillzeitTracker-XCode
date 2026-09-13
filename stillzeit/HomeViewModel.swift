@@ -19,21 +19,45 @@ final class HomeViewModel: ObservableObject {
   /// Netzwerk-Roundtrip aus dem Cache/Demo-Toggle geseedet.
   @Published var breiWasserAktiv = AppSettings.breiWasserAktivFuerAktuellenZugang()
 
-  private var service: EntryService = createConfiguredEntryService()
-  private var beobachter: AnyCancellable?
+  /// Grund der abgebrochenen Verbindung; nil heisst „online“.
+  @Published var offlineGrund: String?
+  /// Anzahl der Schreibzugriffe, die noch auf Übertragung warten.
+  @Published var ausstehend = 0
+  /// IDs, deren Stand noch nicht beim Server ist – die Liste markiert sie.
+  @Published var ausstehendeIds: Set<Int64> = []
+
+  private var service: EntryService = createConfiguredEntryService(offlineFaehig: true)
+  private var beobachter: Set<AnyCancellable> = []
 
   init() {
     // Schreibzugriffe der Uhr lösen ein Neuladen aus.
-    beobachter = NotificationCenter.default
+    NotificationCenter.default
       .publisher(for: .stillzeitWatchAenderung)
       .receive(on: DispatchQueue.main)
       .sink { [weak self] _ in self?.aktualisieren() }
+      .store(in: &beobachter)
+
+    // Den Offline-Zustand übernehmen, statt ihn doppelt zu führen.
+    let status = OfflineStatus.shared
+    status.$grund.assign(to: &$offlineGrund)
+    status.$ausstehend.assign(to: &$ausstehend)
+    status.$ausstehendeIds.assign(to: &$ausstehendeIds)
+
+    // Sobald wieder ein Netzwerkpfad da ist, die Warteschlange abarbeiten –
+    // ohne dass der Nutzer etwas antippen muss.
+    Verbindungswache.shared.wiederVerbunden
+      .receive(on: DispatchQueue.main)
+      .sink { [weak self] in self?.aktualisieren() }
+      .store(in: &beobachter)
   }
 
   /// Baut die Datenquelle anhand der Einstellung neu auf (z. B. nach dem
   /// Verlassen der Einstellungen) und lädt anschließend neu.
   func datenquelleNeuAufbauen() {
-    service = createConfiguredEntryService()
+    // Der Hinweis des alten Zugangs darf nicht über dem neuen stehen bleiben;
+    // die neue Datenquelle meldet ihren eigenen Stand sofort nach.
+    OfflineStatus.shared.zuruecksetzen()
+    service = createConfiguredEntryService(offlineFaehig: true)
     // Buttons sofort korrekt zeigen, bevor die erste Antwort da ist.
     breiWasserAktiv = AppSettings.breiWasserAktivFuerAktuellenZugang()
     aktualisieren()
@@ -43,6 +67,9 @@ final class HomeViewModel: ObservableObject {
     laedt = true
     fehler = nil
     Task {
+      // Erst das Liegengebliebene loswerden, dann laden: sonst zeigte die
+      // Liste einen Serverstand ohne die eigenen Einträge.
+      await warteschlangeAbarbeiten()
       do {
         async let statsNeu = service.getToday()
         async let eintraegeNeu = service.getEntries()
@@ -101,6 +128,17 @@ final class HomeViewModel: ObservableObject {
 
   func loeschen(_ eintrag: Entry) {
     fuehreAus { [self] in try await service.deleteEntry(id: eintrag.id) }
+  }
+
+  /// Schickt die offenen Schreibzugriffe zum Server. Verworfene Aktionen
+  /// (vom Server inhaltlich zurückgewiesen) meldet sie einmal gesammelt.
+  private func warteschlangeAbarbeiten() async {
+    guard let offline = service as? OfflineService else { return }
+    let verworfen = await offline.nachholen()
+    guard !verworfen.isEmpty else { return }
+    meldung = verworfen.count == 1
+      ? "Eine wartende Änderung wurde vom Server abgelehnt: \(verworfen[0])"
+      : "\(verworfen.count) wartende Änderungen wurden vom Server abgelehnt."
   }
 
   /// Führt eine schreibende Aktion aus und lädt danach neu. Eine gewählte

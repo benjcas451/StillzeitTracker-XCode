@@ -7,8 +7,12 @@ struct SettingsView: View {
   @State private var mode = AppSettings.mode
   @State private var apiUrl = AppSettings.apiBaseUrl
   @State private var apiKeyUrl = AppSettings.apiKeyBaseUrl
+  @State private var cloudflareUrl = AppSettings.cloudflareBaseUrl
   @State private var apiKey = AppSettings.apiKey
   @State private var mtlsApiKey = AppSettings.mtlsApiKey
+  @State private var cloudflareApiKey = AppSettings.cloudflareApiKey
+  @State private var cfClientId = AppSettings.cfAccessClientId
+  @State private var cfClientSecret = AppSettings.cfAccessClientSecret
   @State private var certsOk = CertSource().sindVorhanden
   @State private var certOrt = CertSource().locationLabel
   @State private var eigenerCertOrdner = CertSource().eigenerOrdner
@@ -23,6 +27,8 @@ struct SettingsView: View {
 
   @FocusState private var urlFokus: Bool
   @FocusState private var keyFokus: Bool
+  @FocusState private var cfIdFokus: Bool
+  @FocusState private var cfSecretFokus: Bool
 
   var body: some View {
     NavigationStack {
@@ -33,6 +39,7 @@ struct SettingsView: View {
             datenquelle
             if mode == .apiKey { apiKeySektion }
             if mode == .api { mtlsSektion }
+            if mode == .cloudflare { cloudflareSektion }
             breiWasserSektion
             if mode == .demo { backupSektion }
             erklaerung
@@ -100,6 +107,10 @@ struct SettingsView: View {
         untertitel: "API-Key empfohlen (statt Zertifikat)"
       ) { setzeModus(.apiKey) }
       ModusZeile(
+        gewaehlt: mode == .cloudflare, titel: "Server (Cloudflare Access)",
+        untertitel: "Zugang per Service Token"
+      ) { setzeModus(.cloudflare) }
+      ModusZeile(
         gewaehlt: mode == .demo, titel: "Lokal (SQLite)",
         untertitel: "Einträge bleiben nur auf diesem Gerät"
       ) { setzeModus(.demo) }
@@ -134,6 +145,31 @@ struct SettingsView: View {
           + "Key erwartet. Leer lassen für reines mTLS."
       ) { AppSettings.mtlsApiKey = $0 }
       zertifikatsBlock
+    }
+  }
+
+  /// Cloudflare Access prüft das Service Token am Rand und reicht die
+  /// Anfrage erst danach an den Server weiter. Der Zusatz-Key ist wie im
+  /// mTLS-Modus optional – für Server, die dahinter weiter ihren eigenen
+  /// Key verlangen.
+  private var cloudflareSektion: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Sektion("Server (Cloudflare Access)")
+      UrlFeld(wert: $cloudflareUrl, fokus: $urlFokus) { AppSettings.cloudflareBaseUrl = $0 }
+      ApiKeyFeld(
+        wert: $cfClientId, fokus: $cfIdFokus, titel: "Client-ID",
+        hinweis: "Client-ID des Service Tokens, endet üblicherweise auf „.access“."
+      ) { AppSettings.cfAccessClientId = $0 }
+      ApiKeyFeld(
+        wert: $cfClientSecret, fokus: $cfSecretFokus, titel: "Client-Secret",
+        hinweis: "Beide Teile nötig. Service Tokens laufen ab, standardmäßig "
+          + "nach einem Jahr."
+      ) { AppSettings.cfAccessClientSecret = $0 }
+      ApiKeyFeld(
+        wert: $cloudflareApiKey, fokus: $keyFokus, titel: "API-Key (optional)",
+        hinweis: "Nur nötig, wenn der Server hinter Cloudflare zusätzlich einen "
+          + "Key erwartet."
+      ) { AppSettings.cloudflareApiKey = $0 }
     }
   }
 
@@ -369,6 +405,7 @@ private struct UrlFeld: View {
 private struct ApiKeyFeld: View {
   @Binding var wert: String
   var fokus: FocusState<Bool>.Binding
+  var titel: String = "API-Key (optional)"
   let hinweis: String
   let onAenderung: (String) -> Void
 
@@ -379,9 +416,9 @@ private struct ApiKeyFeld: View {
       HStack {
         Group {
           if sichtbar {
-            TextField("API-Key (optional)", text: $wert)
+            TextField(titel, text: $wert)
           } else {
-            SecureField("API-Key (optional)", text: $wert)
+            SecureField(titel, text: $wert)
           }
         }
         .font(.nunito(16))
@@ -512,6 +549,8 @@ extension SettingsView {
     • Server (mTLS-API): Client-Zertifikat (client.crt + client.key), optional \
     zusätzlich der Header "X-API-Key: <Key>"
     • Server (API-Key): HTTP-Header "X-API-Key: <Key>"
+    • Server (Cloudflare Access): Header "CF-Access-Client-Id: <ID>" und \
+    "CF-Access-Client-Secret: <Secret>", optional zusätzlich "X-API-Key: <Key>"
 
     Ein Eintrag hat die Felder id, create_time, seite, menge (bei Flasche/Wasser in ml, bei \
     Brei in g), einheit ("ml", "g" oder null), flaschen_art (Pre oder Mutter, nur bei Flasche) \

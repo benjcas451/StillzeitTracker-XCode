@@ -140,6 +140,24 @@ final class PhoneWatchBridge: NSObject, WCSessionDelegate, @unchecked Sendable {
       }
       return ["mode": "apiKey", "base_url": baseUrl, "api_key": AppSettings.apiKey]
 
+    case .cloudflare:
+      let baseUrl = AppSettings.cloudflareBaseUrl
+      guard !baseUrl.isEmpty else {
+        throw ServiceError(message: "Auf dem Telefon ist keine API-URL hinterlegt.")
+      }
+      guard AppSettings.cfServiceTokenVollstaendig else {
+        throw ServiceError(
+          message: "Auf dem Telefon ist kein vollständiges Service Token hinterlegt.")
+      }
+      return [
+        "mode": "cloudflare",
+        "base_url": baseUrl,
+        "cf_access_client_id": AppSettings.cfAccessClientId,
+        "cf_access_client_secret": AppSettings.cfAccessClientSecret,
+        // Optionaler Zusatz-Key, analog zum mTLS-Modus.
+        "api_key": AppSettings.cloudflareApiKey,
+      ]
+
     case .api:
       let baseUrl = AppSettings.apiBaseUrl
       guard !baseUrl.isEmpty else {

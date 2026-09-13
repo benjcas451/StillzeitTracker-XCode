@@ -99,6 +99,12 @@ stillzeit/                       iPhone-App
   EntryService.swift             Sendable-Protokoll der Datenquellen + Factory
   DemoService.swift              lokale SQLite (C-API, sqflite-kompatibel)
   ApiService.swift               REST-Client (URLSession; PATCH + mTLS)
+  Netzfehler.swift               Einordnung: nie gesendet vs. mehrdeutig
+  OfflineSpeicher.swift          Warteschlange + Lesestand je Zugang (JSON)
+  OfflineService.swift           Offline-Hülle um die Server-Quelle,
+                                 Verbindungswache (NWPathMonitor)
+  CloudflareServiceToken.swift   Service-Token-Header + Erkennung der
+                                 Access-Abweisung (Redirect auf die Login-Seite)
   ClientIdentity.swift           PEM (crt/key) -> SecIdentity (Keychain), inkl. PKCS#8-Parser
   CertSource.swift               Zertifikatsquelle: App-Ordner oder frei
                                  gewählter Ordner (security-scoped Bookmark)
@@ -113,11 +119,79 @@ StillzeitWatch/                  watchOS-App (eigenständig lauffähige UI,
 ```
 
 **Datenquellen (vom Nutzer wählbar):** Server per mTLS-Client-Zertifikat,
-Server per API-Key (`X-API-Key`-Header) oder lokale SQLite ohne Sync. Im
-mTLS-Modus lässt sich seit 2.2.2 **zusätzlich** ein API-Key hinterlegen
+Server per API-Key (`X-API-Key`-Header), Server hinter Cloudflare Access per
+Service Token oder lokale SQLite ohne Sync.
+
+Im mTLS-Modus lässt sich seit 2.2.2 **zusätzlich** ein API-Key hinterlegen
 (eigener Keychain-Account `mtls-api-key`, getrennt vom `api-key` des
 API-Key-Modus) — für Server, die beides prüfen. Bleibt das Feld leer, geht
 wie bisher kein `X-API-Key`-Header raus.
+
+Der Cloudflare-Modus (seit 2.3.0) sendet `CF-Access-Client-Id` und
+`CF-Access-Client-Secret`; beide Hälften liegen in eigenen Keychain-Accounts
+(`cf-access-client-id`, `cf-access-client-secret`) und gehen nur gemeinsam
+raus — ein halbes Token weist Cloudflare genauso ab wie gar keines. Auch hier
+ist ein Zusatz-Key möglich (`cloudflare-api-key`), für Server, die hinter
+Access weiter ihren eigenen Key verlangen.
+
+**Access-Abweisung:** Ohne gültiges Token antwortet Cloudflare nicht mit
+einem Fehler, sondern leitet auf die Login-Seite des Teams um. `URLSession`
+folgt dem, sodass eine HTML-Seite mit Status 200 ankommt. `ApiService` und
+`DirectApi` erkennen das am Host der finalen Antwort (Subdomain von
+`cloudflareaccess.com`) bzw. an einem 403 mit `cf-ray`-Header und melden es
+als Token-Problem. Die Uhr behandelt den Fall wie „Server nicht erreichbar“
+und weicht auf das iPhone aus: die Anfrage wurde am Rand abgefangen, hat den
+Server also nachweislich nie erreicht.
+
+### Offline-Betrieb
+
+Bricht die Verbindung weg, bleibt die App benutzbar. `OfflineService` legt
+sich dafür über die Server-Quelle (nur in den Server-Modi, nicht im Demo).
+
+**Lesen:** Nach jedem erfolgreichen Laden liegt der Stand als JSON in
+`Application Support/Offline/`, getrennt nach Einträgen und Statistik (die
+Oberfläche lädt beide nebenläufig). Scheitert das Laden an einem
+Netzwerkfehler, zeigt die App diesen Stand statt einer leeren Liste. Ob die
+Anfrage ankam, spielt beim Lesen keine Rolle.
+
+**Schreiben:** Was nicht rausging, landet in einer Warteschlange und geht
+raus, sobald die Verbindung steht. Entscheidend ist `Netzfehler`:
+
+| Fall | `URLError` | Verhalten |
+|---|---|---|
+| nie gesendet | kein Netz, DNS, Verbindungsaufbau, TLS | in die Warteschlange |
+| mehrdeutig | Zeitüberschreitung, Abbruch mitten drin | Fehlermeldung wie bisher |
+
+Der Unterschied verhindert Duplikate: Bei einem Abbruch mitten in der
+Übertragung könnte der Server den Eintrag längst haben, ein zweiter Versuch
+legte dann einen zweiten an. Die API kennt keinen Idempotenz-Schlüssel,
+deshalb bleibt es in diesen Fällen bei der Meldung.
+
+**Warteschlange.** Neue Einträge bekommen eine negative lokale ID und
+erscheinen sofort in der Liste (mit Uhr-Symbol). Änderungen und Löschungen an
+einem noch wartenden Eintrag werden direkt in dessen `anlegen`-Aktion
+eingearbeitet bzw. werfen sie ganz raus — dadurch beziehen sich alle
+`aendern`/`loeschen`-Aktionen immer auf echte Server-IDs, und beim Abarbeiten
+kann keine unbekannte ID auftauchen. Solange etwas ansteht, geht auch ein
+neuer Schreibzugriff hinten dran statt am Stau vorbei; sonst käme die
+Reihenfolge durcheinander.
+
+**Abarbeiten** passiert vor jedem Laden, beim Zurückkehren aus dem
+Hintergrund und sobald `NWPathMonitor` wieder einen Pfad meldet. Beim ersten
+Verbindungsfehler bricht der Durchlauf ab, der Rest bleibt in der
+Reihenfolge stehen. Weist der Server eine Aktion inhaltlich zurück (etwa ein
+längst gelöschter Eintrag), fliegt sie raus und wird einmal gemeldet — sonst
+blockierte sie die Warteschlange für immer.
+
+Die Ablage hängt am Zugang (Modus + Basis-URL). Ein Serverwechsel zeigt also
+nicht die Einträge des anderen und lädt keine Warteschlange dorthin hoch, wo
+sie nicht hingehört.
+
+**Die Uhr bleibt aussen vor.** `PhoneWatchBridge` holt sich die Quelle ohne
+Offline-Hülle: die Uhr führt eine eigene Outbox und bekäme sonst ein
+„erledigt“ gemeldet, während der Eintrag noch beim iPhone liegt. Scheitert
+die Übertragung, meldet die Brücke das weiterhin an die Uhr, die den Eintrag
+dann selbst aufbewahrt und erneut schickt.
 
 ### Concurrency-Konventionen
 
@@ -142,9 +216,13 @@ Antwort:  {"ok": true, "data": { ... }}  bzw.  {"ok": false, "error": "..."}
 ```
 
 Aktionen: `getConnection` (überträgt die Server-Konfiguration des Telefons,
-bei mTLS inkl. PEM als Base64 und – falls hinterlegt – dem zusätzlichen
-`api_key` — die Uhr kann danach direkt mit dem Server sprechen und fällt bei
-Nichterreichbarkeit automatisch auf das iPhone zurück), `getDashboard` (letzte 12 Einträge), `createEntry`, `updateEntry`.
+bei mTLS inkl. PEM als Base64, im Cloudflare-Modus inkl.
+`cf_access_client_id`/`cf_access_client_secret`, jeweils – falls hinterlegt –
+mit dem zusätzlichen `api_key` — die Uhr kann danach direkt mit dem Server
+sprechen und fällt bei Nichterreichbarkeit automatisch auf das iPhone
+zurück), `getDashboard` (letzte 12 Einträge), `createEntry`, `updateEntry`.
+Ein `mode`, den die Uhr nicht kennt, gilt ihr als „nichts zu übernehmen“ —
+eine alte Uhr an einem neuen iPhone bleibt damit im Relay lauffähig.
 **Dieses Protokoll ist byte-identisch zur Android/Wear-Strecke** —
 Änderungen immer in beiden Repos nachziehen.
 
@@ -185,11 +263,12 @@ Auf iOS gibt es kein Gegenstück zu Androids `backup_rules.xml` /
 | | iCloud-Backup | Direkttransfer (Schnellstart) |
 |---|---|---|
 | Einträge (SQLite) | ✅ | ✅ |
-| API-Keys (Keychain) | ❌ | ✅ |
+| API-Keys & Service Token (Keychain) | ❌ | ✅ |
 | Client-Zertifikat | ❌ | ❌ |
 
-Die API-Keys (der des API-Key-Modus und der optionale Zusatz-Key des
-mTLS-Modus) liegen in der Keychain, mit `kSecAttrAccessibleAfterFirstUnlock`
+Die API-Keys (der des API-Key-Modus, die optionalen Zusatz-Keys des mTLS-
+und des Cloudflare-Modus) sowie beide Hälften des Cloudflare Service Tokens
+liegen in der Keychain, mit `kSecAttrAccessibleAfterFirstUnlock`
 und **ohne** `kSecAttrSynchronizable`. Damit sind sie beim Direkttransfer und
 im verschlüsselten Finder-Backup dabei, aus einem iCloud-Backup dagegen nicht
 wiederherstellbar — die iOS-Entsprechung der Android-Entscheidung
