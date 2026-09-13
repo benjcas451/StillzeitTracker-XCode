@@ -1,7 +1,7 @@
 import Foundation
 
 /// Art des Eintrags. `apiValue` ist exakt der String, den die API erwartet.
-enum Seite: String, CaseIterable, Identifiable {
+enum Seite: String, CaseIterable, Identifiable, Codable {
   case links = "Links"
   case rechts = "Rechts"
   case beidseitig = "Beidseitig"
@@ -54,7 +54,7 @@ enum Seite: String, CaseIterable, Identifiable {
 }
 
 /// Inhalt eines Flaschen-Eintrags.
-enum FlaschenArt: String, CaseIterable, Identifiable {
+enum FlaschenArt: String, CaseIterable, Identifiable, Codable {
   case pre = "Pre"
   case mutter = "Mutter"
 
@@ -67,7 +67,7 @@ enum FlaschenArt: String, CaseIterable, Identifiable {
 }
 
 /// Ein einzelner Stillzeit-/Flaschen-/Brei-/Wasser-Eintrag.
-struct Entry: Identifiable, Equatable {
+struct Entry: Identifiable, Equatable, Codable {
   let id: Int64
   let createTime: Date
   let seite: Seite
@@ -85,7 +85,7 @@ struct Entry: Identifiable, Equatable {
 }
 
 /// Tagesstatistik (`GET /api/?action=heute`).
-struct TodayStats {
+struct TodayStats: Codable {
   var gesamt = 0
   var links = 0
   var rechts = 0

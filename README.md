@@ -99,6 +99,10 @@ stillzeit/                       iPhone-App
   EntryService.swift             Sendable-Protokoll der Datenquellen + Factory
   DemoService.swift              lokale SQLite (C-API, sqflite-kompatibel)
   ApiService.swift               REST-Client (URLSession; PATCH + mTLS)
+  Netzfehler.swift               Einordnung: nie gesendet vs. mehrdeutig
+  OfflineSpeicher.swift          Warteschlange + Lesestand je Zugang (JSON)
+  OfflineService.swift           Offline-Hülle um die Server-Quelle,
+                                 Verbindungswache (NWPathMonitor)
   CloudflareServiceToken.swift   Service-Token-Header + Erkennung der
                                  Access-Abweisung (Redirect auf die Login-Seite)
   ClientIdentity.swift           PEM (crt/key) -> SecIdentity (Keychain), inkl. PKCS#8-Parser
@@ -138,6 +142,56 @@ folgt dem, sodass eine HTML-Seite mit Status 200 ankommt. `ApiService` und
 als Token-Problem. Die Uhr behandelt den Fall wie „Server nicht erreichbar“
 und weicht auf das iPhone aus: die Anfrage wurde am Rand abgefangen, hat den
 Server also nachweislich nie erreicht.
+
+### Offline-Betrieb
+
+Bricht die Verbindung weg, bleibt die App benutzbar. `OfflineService` legt
+sich dafür über die Server-Quelle (nur in den Server-Modi, nicht im Demo).
+
+**Lesen:** Nach jedem erfolgreichen Laden liegt der Stand als JSON in
+`Application Support/Offline/`, getrennt nach Einträgen und Statistik (die
+Oberfläche lädt beide nebenläufig). Scheitert das Laden an einem
+Netzwerkfehler, zeigt die App diesen Stand statt einer leeren Liste. Ob die
+Anfrage ankam, spielt beim Lesen keine Rolle.
+
+**Schreiben:** Was nicht rausging, landet in einer Warteschlange und geht
+raus, sobald die Verbindung steht. Entscheidend ist `Netzfehler`:
+
+| Fall | `URLError` | Verhalten |
+|---|---|---|
+| nie gesendet | kein Netz, DNS, Verbindungsaufbau, TLS | in die Warteschlange |
+| mehrdeutig | Zeitüberschreitung, Abbruch mitten drin | Fehlermeldung wie bisher |
+
+Der Unterschied verhindert Duplikate: Bei einem Abbruch mitten in der
+Übertragung könnte der Server den Eintrag längst haben, ein zweiter Versuch
+legte dann einen zweiten an. Die API kennt keinen Idempotenz-Schlüssel,
+deshalb bleibt es in diesen Fällen bei der Meldung.
+
+**Warteschlange.** Neue Einträge bekommen eine negative lokale ID und
+erscheinen sofort in der Liste (mit Uhr-Symbol). Änderungen und Löschungen an
+einem noch wartenden Eintrag werden direkt in dessen `anlegen`-Aktion
+eingearbeitet bzw. werfen sie ganz raus — dadurch beziehen sich alle
+`aendern`/`loeschen`-Aktionen immer auf echte Server-IDs, und beim Abarbeiten
+kann keine unbekannte ID auftauchen. Solange etwas ansteht, geht auch ein
+neuer Schreibzugriff hinten dran statt am Stau vorbei; sonst käme die
+Reihenfolge durcheinander.
+
+**Abarbeiten** passiert vor jedem Laden, beim Zurückkehren aus dem
+Hintergrund und sobald `NWPathMonitor` wieder einen Pfad meldet. Beim ersten
+Verbindungsfehler bricht der Durchlauf ab, der Rest bleibt in der
+Reihenfolge stehen. Weist der Server eine Aktion inhaltlich zurück (etwa ein
+längst gelöschter Eintrag), fliegt sie raus und wird einmal gemeldet — sonst
+blockierte sie die Warteschlange für immer.
+
+Die Ablage hängt am Zugang (Modus + Basis-URL). Ein Serverwechsel zeigt also
+nicht die Einträge des anderen und lädt keine Warteschlange dorthin hoch, wo
+sie nicht hingehört.
+
+**Die Uhr bleibt aussen vor.** `PhoneWatchBridge` holt sich die Quelle ohne
+Offline-Hülle: die Uhr führt eine eigene Outbox und bekäme sonst ein
+„erledigt“ gemeldet, während der Eintrag noch beim iPhone liegt. Scheitert
+die Übertragung, meldet die Brücke das weiterhin an die Uhr, die den Eintrag
+dann selbst aufbewahrt und erneut schickt.
 
 ### Concurrency-Konventionen
 
