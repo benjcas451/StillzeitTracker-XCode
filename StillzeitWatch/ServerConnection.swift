@@ -12,11 +12,24 @@ struct ServerConnection: Codable {
   let clientCertPEM: Data?
   /// PEM-Bytes des privaten Schlüssels; nil im API-Key-Modus.
   let clientKeyPEM: Data?
+  /// Client-ID des Cloudflare Service Tokens; nil ausserhalb des
+  /// Cloudflare-Modus. Bei Verbindungen, die vor 2.3.0 übernommen wurden,
+  /// fehlt das Feld in der Ablage und wird zu nil decodiert.
+  let cfAccessClientId: String?
+  /// Client-Secret des Cloudflare Service Tokens; nil ausserhalb des
+  /// Cloudflare-Modus.
+  let cfAccessClientSecret: String?
 
   var isMutualTLS: Bool { clientCertPEM != nil && clientKeyPEM != nil }
 
+  /// Läuft die Verbindung über ein Cloudflare Service Token?
+  var isCloudflare: Bool { cfAccessClientId != nil && cfAccessClientSecret != nil }
+
   /// Kurzbeschreibung für die Statusanzeige auf der Uhr.
   var label: String {
+    if isCloudflare {
+      return apiKey == nil ? "Direkt · Cloudflare" : "Direkt · Cloudflare + Key"
+    }
     guard isMutualTLS else { return "Direkt · API-Key" }
     return apiKey == nil ? "Direkt · mTLS" : "Direkt · mTLS + Key"
   }
@@ -36,7 +49,21 @@ extension ServerConnection {
     switch reply["mode"] as? String {
     case "apiKey":
       guard let key = reply["api_key"] as? String, !key.isEmpty else { return nil }
-      self.init(baseURL: normalized, apiKey: key, clientCertPEM: nil, clientKeyPEM: nil)
+      self.init(
+        baseURL: normalized, apiKey: key, clientCertPEM: nil, clientKeyPEM: nil,
+        cfAccessClientId: nil, cfAccessClientSecret: nil)
+
+    case "cloudflare":
+      // Ein halbes Service Token ist so gut wie keines — dann lieber weiter
+      // über das iPhone, statt am Rand abgewiesen zu werden.
+      guard
+        let id = reply["cf_access_client_id"] as? String, !id.isEmpty,
+        let secret = reply["cf_access_client_secret"] as? String, !secret.isEmpty
+      else { return nil }
+      let zusatzKey = (reply["api_key"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+      self.init(
+        baseURL: normalized, apiKey: zusatzKey, clientCertPEM: nil, clientKeyPEM: nil,
+        cfAccessClientId: id, cfAccessClientSecret: secret)
 
     case "api":
       guard
@@ -48,7 +75,9 @@ extension ServerConnection {
       // Zusatz-Key optional: ältere iPhone-Versionen senden das Feld gar
       // nicht, dann bleibt es wie bisher bei reinem mTLS.
       let zusatzKey = (reply["api_key"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-      self.init(baseURL: normalized, apiKey: zusatzKey, clientCertPEM: cert, clientKeyPEM: key)
+      self.init(
+        baseURL: normalized, apiKey: zusatzKey, clientCertPEM: cert, clientKeyPEM: key,
+        cfAccessClientId: nil, cfAccessClientSecret: nil)
 
     default:
       return nil

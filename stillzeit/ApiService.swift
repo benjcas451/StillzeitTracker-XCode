@@ -2,13 +2,14 @@ import Foundation
 import Security
 
 /// Spricht die Stillzeit-Tracker-REST-API an. Authentifizierung per
-/// mTLS-Client-Zertifikat (`certSource`), per API-Key (`X-API-Key`-Header)
-/// oder per beidem zugleich.
+/// mTLS-Client-Zertifikat (`certSource`), per API-Key (`X-API-Key`-Header),
+/// per Cloudflare Service Token (`cfToken`) oder per Kombination davon.
 /// Endpunkte und JSON-Felder identisch zur Flutter-/Android-App.
 final class ApiService: NSObject, EntryService {
 
   private let baseURL: String
   private let apiKey: String?
+  private let cfToken: CloudflareServiceToken?
   private let certSource: CertSource?
   // Wird beim ersten Request gesetzt; parallele Erst-Requests erzeugen die
   // Identity schlimmstenfalls doppelt (idempotent, gleicher Keychain-Eintrag).
@@ -18,10 +19,14 @@ final class ApiService: NSObject, EntryService {
   // lazy wäre bei parallelen Erst-Requests nicht threadsicher.
   nonisolated(unsafe) private var session: URLSession!
 
-  init(baseURL: String, certSource: CertSource? = nil, apiKey: String? = nil) {
+  init(
+    baseURL: String, certSource: CertSource? = nil, apiKey: String? = nil,
+    cfToken: CloudflareServiceToken? = nil
+  ) {
     self.baseURL = baseURL
     self.certSource = certSource
     self.apiKey = apiKey
+    self.cfToken = cfToken
     super.init()
     let configuration = URLSessionConfiguration.ephemeral
     configuration.timeoutIntervalForRequest = 20
@@ -119,6 +124,7 @@ final class ApiService: NSObject, EntryService {
     if let apiKey, !apiKey.isEmpty {
       request.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
     }
+    if let cfToken { cfToken.anwenden(auf: &request) }
     if let body {
       request.setValue("application/json", forHTTPHeaderField: "Content-Type")
       request.httpBody = try? JSONSerialization.data(withJSONObject: body)
@@ -134,6 +140,9 @@ final class ApiService: NSObject, EntryService {
 
     guard let http = response as? HTTPURLResponse else {
       throw ServiceError(message: "Unerwartete Antwort des Servers.")
+    }
+    if let hinweis = CloudflareServiceToken.abweisung(http) {
+      throw ServiceError(message: hinweis)
     }
     guard (200..<300).contains(http.statusCode) else {
       throw ServiceError(message: "Fehler \(http.statusCode): \(Self.meldung(aus: data))")

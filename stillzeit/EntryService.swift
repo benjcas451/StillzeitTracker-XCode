@@ -48,6 +48,13 @@ func createConfiguredEntryService() -> EntryService {
       apiKey: AppSettings.mtlsApiKey.isEmpty ? nil : AppSettings.mtlsApiKey)
   case .apiKey:
     ApiService(baseURL: AppSettings.apiKeyBaseUrl, apiKey: AppSettings.apiKey)
+  case .cloudflare:
+    // Cloudflare Access sichert den Zugang am Rand; der Zusatz-Key ist wie im
+    // mTLS-Modus optional und geht nur raus, wenn er hinterlegt ist.
+    ApiService(
+      baseURL: AppSettings.cloudflareBaseUrl,
+      apiKey: AppSettings.cloudflareApiKey.isEmpty ? nil : AppSettings.cloudflareApiKey,
+      cfToken: .ausEinstellungen)
   case .demo:
     DemoService.shared
   }

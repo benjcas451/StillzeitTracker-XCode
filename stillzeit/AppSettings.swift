@@ -7,6 +7,9 @@ enum DataSourceMode: String {
   case api
   /// Server-API mit API-Key (X-API-Key-Header) statt Client-Zertifikat.
   case apiKey
+  /// Server-API hinter Cloudflare Access, ausgewiesen per Service Token
+  /// (`CF-Access-Client-Id`/`CF-Access-Client-Secret`).
+  case cloudflare
   /// Immer die lokale SQLite-Datenbank.
   case demo
 }
@@ -29,6 +32,7 @@ enum AppSettings {
     static let apiKey = "api_key"
     static let apiBaseUrl = "api_base_url"
     static let apiKeyBaseUrl = "api_key_base_url"
+    static let cloudflareBaseUrl = "cloudflare_base_url"
     static let certBookmark = "cert_folder_bookmark_ios"
     static let certLabel = "cert_folder_label_ios"
     static let migriert = "migriert_von_flutter"
@@ -87,6 +91,39 @@ enum AppSettings {
     set { ApiKeyStore.speichere(newValue.trimmingCharacters(in: .whitespaces), fuer: .mtlsZusatz) }
   }
 
+  /// Optionaler API-Key **zusätzlich** zum Cloudflare Service Token im Modus
+  /// `.cloudflare`. Cloudflare Access prüft am Rand, der Server dahinter kann
+  /// darüber hinaus seinen eigenen Key verlangen. Eigener Keychain-Eintrag aus
+  /// demselben Grund wie bei `mtlsApiKey`.
+  static var cloudflareApiKey: String {
+    get { ApiKeyStore.lade(.cloudflareZusatz) }
+    set {
+      ApiKeyStore.speichere(newValue.trimmingCharacters(in: .whitespaces), fuer: .cloudflareZusatz)
+    }
+  }
+
+  /// Client-ID des Cloudflare Service Tokens (endet üblicherweise auf
+  /// `.access`). Kein Geheimnis im engeren Sinn, liegt aber beim zugehörigen
+  /// Secret, damit beide gemeinsam gesetzt und gelöscht werden.
+  static var cfAccessClientId: String {
+    get { ApiKeyStore.lade(.cfClientId) }
+    set { ApiKeyStore.speichere(newValue.trimmingCharacters(in: .whitespaces), fuer: .cfClientId) }
+  }
+
+  /// Client-Secret des Cloudflare Service Tokens.
+  static var cfAccessClientSecret: String {
+    get { ApiKeyStore.lade(.cfClientSecret) }
+    set {
+      ApiKeyStore.speichere(newValue.trimmingCharacters(in: .whitespaces), fuer: .cfClientSecret)
+    }
+  }
+
+  /// Sind beide Teile des Service Tokens hinterlegt? Nur dann gehen die
+  /// Cloudflare-Header raus – ein halbes Token ist so gut wie keines.
+  static var cfServiceTokenVollstaendig: Bool {
+    !cfAccessClientId.isEmpty && !cfAccessClientSecret.isEmpty
+  }
+
   /// Basis-URL der mTLS-API; leer, solange keine hinterlegt ist.
   static var apiBaseUrl: String {
     get { ladeUrl(Key.apiBaseUrl) }
@@ -97,6 +134,15 @@ enum AppSettings {
   static var apiKeyBaseUrl: String {
     get { ladeUrl(Key.apiKeyBaseUrl) }
     set { defaults.set(newValue.trimmingCharacters(in: .whitespaces), forKey: Key.apiKeyBaseUrl) }
+  }
+
+  /// Basis-URL der API hinter Cloudflare Access; leer, solange keine
+  /// hinterlegt ist.
+  static var cloudflareBaseUrl: String {
+    get { ladeUrl(Key.cloudflareBaseUrl) }
+    set {
+      defaults.set(newValue.trimmingCharacters(in: .whitespaces), forKey: Key.cloudflareBaseUrl)
+    }
   }
 
   /// Lokales Opt-in für Brei & Wasser (Default aus). Erst wenn es der
@@ -131,6 +177,7 @@ enum AppSettings {
       switch mode {
       case .api: apiBaseUrl
       case .apiKey: apiKeyBaseUrl
+      case .cloudflare: cloudflareBaseUrl
       case .demo: ""
       }
     return "brei_wasser_aktiv:\(mode.rawValue):\(baseUrl)"
@@ -174,6 +221,12 @@ private enum ApiKeyStore {
     case apiKeyModus = "api-key"
     /// Der optionale Zusatz-Key des mTLS-Modus.
     case mtlsZusatz = "mtls-api-key"
+    /// Der optionale Zusatz-Key des Cloudflare-Modus.
+    case cloudflareZusatz = "cloudflare-api-key"
+    /// Client-ID des Cloudflare Service Tokens.
+    case cfClientId = "cf-access-client-id"
+    /// Client-Secret des Cloudflare Service Tokens.
+    case cfClientSecret = "cf-access-client-secret"
   }
 
   static func lade(_ ablage: Ablage) -> String {
