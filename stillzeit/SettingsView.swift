@@ -214,7 +214,7 @@ struct SettingsView: View {
             .font(.nunito(12)).foregroundStyle(Mh.textSekundaer)
           if !eigenerCertOrdner {
             Text(
-              "Per Dateien-App in den Ordner der App „Stillzeit“ kopieren – oder "
+              "Per Dateien-App in den Ordner der App „Stillzeit-Tracker“ kopieren – oder "
                 + "unten einen eigenen Ordner wählen.")
               .font(.nunito(12)).foregroundStyle(Mh.textSekundaer)
           }

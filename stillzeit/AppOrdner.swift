@@ -39,7 +39,7 @@ enum AppOrdner {
   }
 
   private static let hinweis = """
-    Das ist der Ordner der App „Stillzeit“ in der Dateien-App.
+    Das ist der Ordner der App „Stillzeit-Tracker“ in der Dateien-App.
 
     Für die Anmeldung per Client-Zertifikat (mTLS) gehören hier hinein:
 
