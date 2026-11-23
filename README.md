@@ -112,8 +112,10 @@ stillzeit/                       iPhone-App
   AppSettings.swift              UserDefaults + Flutter-Migration
   LocalBackupService.swift       JSON-Backup (Format kompatibel zu Android/Flutter)
   PhoneWatchBridge.swift         WatchConnectivity-Endpunkt für die Uhr
-  Theme.swift, HomeView.swift, SettingsView.swift, Dialoge.swift, HomeViewModel.swift
-  Fonts/                         Nunito (OFL, Lizenz liegt daneben)
+  MhTheme.swift, MhBausteine.swift  Minze & Honig 2.0 (Rollen, Schrift, Bausteine)
+  HomeView.swift, SettingsView.swift, Dialoge.swift, HomeViewModel.swift
+  Bildschirmfotos.swift          Testdaten nur für den Screenshot-UI-Test
+  Fonts/                         Figtree (OFL, Lizenz in licenses/)
 StillzeitWatch/                  watchOS-App (eigenständig lauffähige UI,
                                  DirectApi für den Direktbetrieb gegen den Server)
 ```
@@ -307,41 +309,46 @@ auszuwählen.
 
 Unabhängig davon gibt es das manuelle Backup unter *Einstellungen → Backup*.
 
-## Design-System „Minze & Honig“ (v1.0)
+## Design-System „Minze & Honig 2.0“
 
-Quelle der Wahrheit im Code: `stillzeit/Theme.swift` (iPhone, `Mh`-Enum)
-und die `MhW`-Tokens in `StillzeitWatch/ContentView.swift`. Kernregeln:
+Quelle der Wahrheit: der Guide im Repo `DesignGuide` (`DESIGN_GUIDE.md`,
+`tokens/design-tokens.json`). Im Code: `stillzeit/MhTheme.swift` (Rollen
+hell/dunkel als dynamische Farben, Radien, Abstände, Typo-Skala mit Dynamic
+Type, `MhDarstellung.einrichten()` für Navigationsleiste und Segmente) und
+`stillzeit/MhBausteine.swift` (Buttons, Segmentschalter, Auswahl, Listen,
+Statistik, Hinweise, Felder). Die Uhr hat eine eigene kleine Datei
+`StillzeitWatch/MhUhr.swift` mit den dunklen Rollen (kein UIKit).
 
-- **Grundregel:** Weiß dominiert (~80 %), Farbe liegt *auf* dem Grund —
-  nie als Seitenhintergrund. Dark: Grund `#1F2221`, Karten `#292D2B`,
-  Ränder `#3A403C` — kein reines Schwarz.
-- **Skalen 50–900** je Markenfarbe. 300 = Markenton (Flächen/Buttons),
-  100 = zarte Hinweisfläche, 600/700 = text-/icontauglich auf Weiß,
-  900 = Text auf 300er-Flächen. **Pastell (300) nie als Text auf Weiß.**
-- **Markenfarben:** Minze (Primär) `#A8D5BA`/300, Honig (Sekundär)
-  `#F7E8A4`/300, Flieder (Akzent, sparsam) `#CDB4DB`/300; Grau leicht
-  grünstichig (`#F6F8F6` … `#1F2221`); Rot nur semantisch
-  (Fehler/Löschen: Fläche 100 `#FAE3E1`, Text 700 `#96362F`, dark 300 `#F0B6B1`).
-- **Eintragsarten (Chip-Muster, plattformübergreifend identisch):**
-  Links = Minze, Rechts = Flieder, Flasche = Honig, Beidseitig = Grau,
-  Brei = Honig eine Stufe dunkler (400), Wasser = neutrales Grau.
-  Kacheln/Buttons: Fläche 300 + Text 900; Listen-Avatare: zarte Fläche
-  (100 bzw. Dark-Äquivalent `#263B2F`/`#3B3524`/`#352B3C`) + Icon 700/300.
-- **Dark Mode:** Pastellflächen (300) bleiben unverändert mit 900er-Text;
-  100er-Flächen werden zu den abgedunkelten Äquivalenten. Die
-  Systemfarben laufen über `UIColor`-Dynamic-Provider (hell/dunkel).
-- **Typografie:** ausschließlich **Nunito** (eingebettet, OFL — Lizenz
-  liegt in `Fonts/`); Gewicht statt Schriftmischung (400/600/700/800).
-  Stolperfalle: die statischen Google-Fonts-Schnitte tragen die
-  PostScript-Namen `NunitoExtraLight-Regular/-SemiBold/-Bold/-ExtraBold` —
-  es sind trotzdem die normalen Gewichte. iPhone registriert die Fonts zur
-  Laufzeit (`NunitoFont.registrieren()`), die Watch über `UIAppFonts` in
-  ihrer `Info.plist`.
-- **AccentColor** (Systemdialoge, Navigationstitel der Watch): Minze —
-  600 hell / 300 dunkel.
-- **Form:** Radius 8 / 12 (Buttons, Inputs) / 16 (Karten) / 24 (Sheets) /
-  Pill (Chips). Touch-Ziele min. 44 pt.
-- Kontraste sind WCAG-AA-geprüft; Farbe nie als einziger Informationsträger.
+- **Farbe ist Signal, keine Fläche.** Genau eine Hauptaktion je Ansicht
+  (`primary`: Minze-700 mit weißer Schrift, dunkel Minze-400 mit dunkler
+  Schrift), alles andere Haarlinie oder Text. Keine Pastell-Buttons oder
+  -Karten.
+- **Komponenten nutzen nur Rollen** (`Mh.text`, `Mh.border`, `Mh.data1` …),
+  nie Skalenwerte.
+- **Datenfarben wie im Web:** Stillen (Links/Rechts/Beidseitig) `data1`
+  Minze, Flasche `data2` Honig, Brei/Wasser `data3` Flieder — immer als
+  10-pt-Punkt neben dem Namen, nie allein.
+- **Dunkel:** Grund `#1F2221`, Flächen `#262A28`, Linien `#343A36`; farbiger
+  Text nur aus den 200/300er-Stufen. Hell/Dunkel folgt dem System.
+- **Schrift Figtree** (OFL, Lizenz in `licenses/Figtree-OFL.txt`), nur
+  400/500/600, keine Kursive. iPhone: `stillzeit/Fonts`, eingetragen in
+  `UIAppFonts` (`AppInfo.plist`) und zur Not zur Laufzeit registriert
+  (`MhSchrift.registrieren()`); Uhr: `StillzeitWatch/Fonts` + `UIAppFonts`
+  der Watch-`Info.plist`. Große Zahlen dünn (400) in Textfarbe, Einheit klein.
+- **Symbole:** eigene Liniensymbole (`Mh*.imageset` im Asset-Katalog,
+  Vektor, Template) statt Emojis und SF Symbols. Nicht benutzte Sätze werden
+  nicht mitgeliefert. Die Uhr behält ihre SF Symbols (Aufbau unverändert).
+- **AccentColor:** `primary` (hell `#38664C`, dunkel `#82BD9B`).
+- **Form:** Radius 6 (Auswahl) / 10 (Buttons, Felder) / 14 (Karten) /
+  20 (Blätter). Linien 1 pt, Karten ohne Schatten. Touch-Ziele min. 44 pt.
+
+**Bildschirmfotos:** Workflow „Bildschirmfotos“ (`screenshots.yml`, bei
+jedem Push auf `claude/**` oder von Hand) startet `ScreenshotTests` im
+iOS-Simulator, hell/dunkel und mit normaler und sehr großer Schrift. Die App
+bekommt dazu `-MhBildschirmfotos 1` und `-data_source_mode demo` und spielt
+dann im lokalen Modus erfundene Testdaten ein (`Bildschirmfotos.swift`);
+ohne diese Argumente passiert nichts. Die PNGs liegen als Artefakt
+„bildschirmfotos“ am Lauf.
 
 ## Sicherheit / was nie ins Repo darf
 

@@ -43,16 +43,21 @@ struct FlascheDialog: View {
 
   var body: some View {
     DialogRahmen(titel: zustand.eintrag == nil ? "Flasche hinzufügen" : "Flasche ändern") {
-      SegmentAuswahl(auswahl: $flaschenArt)
-      MhEingabefeld(
-        text: $mengeText, platzhalter: "Menge in ml", einheit: "ml", fokus: $fokus)
-      if let hinweis {
-        Text(hinweis).font(.nunito(14)).foregroundStyle(Mh.fehlerText)
+      MhFeld("Art") {
+        HStack(spacing: Mh.abstand2) {
+          ForEach(FlaschenArt.allCases) { art in
+            MhAuswahl(art.apiValue, gewaehlt: flaschenArt == art) { flaschenArt = art }
+          }
+        }
       }
+      MhFeld("Menge (ml)") {
+        MhZahlFeld(text: $mengeText, platzhalter: "z. B. 120 (0 = leer)", einheit: "ml", fokus: $fokus)
+      }
+      DialogHinweis(text: hinweis)
     } aktionen: {
       DialogAktionen(onAbbrechen: { dismiss() }) {
         guard let menge = Int(mengeText.trimmingCharacters(in: .whitespaces)), menge >= 0 else {
-          hinweis = "Bitte eine gültige Menge (≥ 0) eingeben."
+          hinweis = "Bitte eine gültige Menge eingeben (0 oder mehr)"
           return
         }
         onSpeichern(menge, flaschenArt)
@@ -86,15 +91,18 @@ struct MengeDialog: View {
     DialogRahmen(
       titel: zustand.eintrag == nil ? "\(zustand.seite.apiValue) hinzufügen" : "Menge ändern"
     ) {
-      MhEingabefeld(
-        text: $mengeText, platzhalter: "Menge in \(einheit)", einheit: einheit, fokus: $fokus)
-      if let hinweis {
-        Text(hinweis).font(.nunito(14)).foregroundStyle(Mh.fehlerText)
+      MhFeld("Menge (\(einheit))") {
+        MhZahlFeld(
+          text: $mengeText,
+          platzhalter: einheit == "g" ? "z. B. 90 (0 = leer)" : "z. B. 120 (0 = leer)",
+          einheit: einheit,
+          fokus: $fokus)
       }
+      DialogHinweis(text: hinweis)
     } aktionen: {
       DialogAktionen(onAbbrechen: { dismiss() }) {
         guard let menge = Int(mengeText.trimmingCharacters(in: .whitespaces)), menge >= 0 else {
-          hinweis = "Bitte eine gültige Menge (≥ 0) eingeben."
+          hinweis = "Bitte eine gültige Menge eingeben (0 oder mehr)"
           return
         }
         onSpeichern(menge)
@@ -126,14 +134,14 @@ struct DauerDialog: View {
     DialogRahmen(
       titel: zustand.eintrag == nil ? "\(zustand.seite.apiValue) hinzufügen" : "Dauer ändern"
     ) {
-      MhEingabefeld(text: $dauerText, platzhalter: "Dauer", einheit: "min", fokus: $fokus)
-      if let hinweis {
-        Text(hinweis).font(.nunito(14)).foregroundStyle(Mh.fehlerText)
+      MhFeld("Dauer (Minuten)") {
+        MhZahlFeld(text: $dauerText, platzhalter: "z. B. 12", einheit: "min", fokus: $fokus)
       }
+      DialogHinweis(text: hinweis)
     } aktionen: {
       DialogAktionen(onAbbrechen: { dismiss() }) {
         guard let dauer = Int(dauerText.trimmingCharacters(in: .whitespaces)), dauer >= 0 else {
-          hinweis = "Bitte eine gültige Dauer (≥ 0) eingeben."
+          hinweis = "Bitte eine gültige Dauer eingeben (0 oder mehr)"
           return
         }
         onSpeichern(dauer)
@@ -161,7 +169,7 @@ struct ZeitwahlSheet: View {
 
   var body: some View {
     DialogRahmen(titel: "Uhrzeit wählen") {
-      DatePicker("", selection: $zeit, displayedComponents: .hourAndMinute)
+      DatePicker("Uhrzeit", selection: $zeit, displayedComponents: .hourAndMinute)
         .datePickerStyle(.wheel)
         .labelsHidden()
         .frame(maxWidth: .infinity)
@@ -176,23 +184,28 @@ struct ZeitwahlSheet: View {
 
 // MARK: - Gemeinsame Bausteine
 
-/// Sheet im Guide-Look: Karte mit Radius 24, Titel in Nunito ExtraBold.
+/// Blatt im 2.0-Look: Fläche `surface`, Titel H2 linksbündig, Radius 20.
 private struct DialogRahmen<Inhalt: View, Aktionen: View>: View {
   let titel: String
   @ViewBuilder let inhalt: () -> Inhalt
   @ViewBuilder let aktionen: () -> Aktionen
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 20) {
-      Text(titel).font(.nunitoExtraBold(20)).foregroundStyle(Mh.text)
-      inhalt()
-      aktionen()
+    ScrollView {
+      VStack(alignment: .leading, spacing: Mh.abstand5) {
+        Text(titel)
+          .mhText(.h2)
+          .foregroundStyle(Mh.textStrong)
+          .accessibilityAddTraits(.isHeader)
+        inhalt()
+        aktionen()
+      }
+      .padding(Mh.abstand6)
+      .frame(maxWidth: .infinity, alignment: .leading)
     }
-    .padding(24)
-    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    .background(Mh.karte.ignoresSafeArea())
-    .presentationDetents([.height(320)])
-    // Radius 24 (Guide: Modals) — erst ab iOS 16.4 steuerbar.
+    .background(Mh.surface.ignoresSafeArea())
+    .presentationDetents([.medium, .large])
+    // Radius 20 (Guide: Dialoge) — erst ab iOS 16.4 steuerbar.
     .modifier(EckenRadiusFallsVerfuegbar())
   }
 }
@@ -200,79 +213,67 @@ private struct DialogRahmen<Inhalt: View, Aktionen: View>: View {
 private struct EckenRadiusFallsVerfuegbar: ViewModifier {
   func body(content: Content) -> some View {
     if #available(iOS 16.4, *) {
-      content.presentationCornerRadius(24)
+      content.presentationCornerRadius(Mh.radiusXl)
     } else {
       content
     }
   }
 }
 
+/// Eine Hauptaktion rechts, „Abbrechen“ leise als Text davor.
 private struct DialogAktionen: View {
   var speichernTitel = "Speichern"
   let onAbbrechen: () -> Void
   let onSpeichern: () -> Void
 
   var body: some View {
-    HStack {
-      Spacer()
+    HStack(spacing: Mh.abstand4) {
+      Spacer(minLength: 0)
       Button("Abbrechen", action: onAbbrechen)
-        .font(.nunitoBold(16))
-        .foregroundStyle(Mh.gruenText)
+        .buttonStyle(.mhText)
       Button(speichernTitel, action: onSpeichern)
-        .buttonStyle(MhButtonStil())
+        .buttonStyle(.mhHaupt)
     }
   }
 }
 
-/// Eingabefeld nach Guide: zarte Fläche, Rand Grau-200, Radius 12.
-struct MhEingabefeld: View {
+/// Fehlerhinweis unter den Feldern (nur sichtbar, wenn es einen gibt).
+private struct DialogHinweis: View {
+  let text: String?
+
+  var body: some View {
+    if let text {
+      Text(text).mhText(.small).foregroundStyle(Mh.danger)
+    }
+  }
+}
+
+/// Zahlenfeld (`input`): 44 pt, Radius 10, Haarlinie `borderStrong`, Grund
+/// `fieldBg`, Einheit rechts im Feld in Nebentextfarbe.
+struct MhZahlFeld: View {
   @Binding var text: String
   let platzhalter: String
   var einheit: String?
   var fokus: FocusState<Bool>.Binding
 
   var body: some View {
-    HStack {
+    HStack(spacing: Mh.abstand2) {
       TextField(platzhalter, text: $text)
         .keyboardType(.numberPad)
-        .font(.nunito(16))
+        .mhText(.body)
+        .foregroundStyle(Mh.text)
+        .tint(Mh.primary)
         .focused(fokus)
       if let einheit {
-        Text(einheit).font(.nunito(14)).foregroundStyle(Mh.textSekundaer)
+        Text(einheit).mhText(.body).foregroundStyle(Mh.textSecondary)
       }
     }
-    .padding(.horizontal, 14)
-    .frame(minHeight: 44)
-    .background(Mh.feldFlaeche)
-    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    .padding(.horizontal, Mh.abstand3)
+    .frame(minHeight: Mh.touch)
+    .background(
+      RoundedRectangle(cornerRadius: Mh.radiusMd, style: .continuous).fill(Mh.fieldBg))
     .overlay(
-      RoundedRectangle(cornerRadius: 12, style: .continuous)
-        .strokeBorder(fokus.wrappedValue ? Mh.minze500 : Mh.rand, lineWidth: 1.5)
-    )
-  }
-}
-
-/// Pre/Mutter-Auswahl: aktives Segment Minze-300 mit 900er-Text.
-private struct SegmentAuswahl: View {
-  @Binding var auswahl: FlaschenArt
-
-  var body: some View {
-    HStack(spacing: 0) {
-      ForEach(FlaschenArt.allCases) { art in
-        Button {
-          auswahl = art
-        } label: {
-          HStack(spacing: 6) {
-            if auswahl == art { Image(systemName: "checkmark").font(.system(size: 13, weight: .bold)) }
-            Text(art.apiValue).font(.nunitoBold(15))
-          }
-          .frame(maxWidth: .infinity, minHeight: 44)
-          .background(auswahl == art ? Mh.minze300 : Mh.karte)
-          .foregroundStyle(auswahl == art ? Mh.minze900 : Mh.text)
-        }
-      }
-    }
-    .clipShape(Capsule())
-    .overlay(Capsule().strokeBorder(Mh.rand, lineWidth: 1.5))
+      RoundedRectangle(cornerRadius: Mh.radiusMd, style: .continuous)
+        .stroke(fokus.wrappedValue ? Mh.focusRing : Mh.borderStrong, lineWidth: 1))
   }
 }

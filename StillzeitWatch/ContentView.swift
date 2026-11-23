@@ -1,36 +1,10 @@
 import SwiftUI
 
-// Design-System „Minze & Honig" (v1.0) – die Uhr folgt den Dark-Regeln aus
-// Guide 2.8: Pastellflächen (300) mit 900er-Text als Akzente, zarte Flächen
-// als abgedunkelte 100er-Äquivalente, Fehler in Rot-300. Zuordnung wie auf
-// dem iPhone: Links=Minze, Rechts=Flieder, Beidseitig=Grau, Flasche=Honig,
-// Brei=Honig eine Stufe dunkler (400), Wasser=Grau.
-enum MhW {
-  static let minze300 = Color(red: 0xA8 / 255, green: 0xD5 / 255, blue: 0xBA / 255)
-  static let minze900 = Color(red: 0x22 / 255, green: 0x39 / 255, blue: 0x2C / 255)
-  static let minzeDunkel = Color(red: 0x26 / 255, green: 0x3B / 255, blue: 0x2F / 255)
-  static let honig300 = Color(red: 0xF7 / 255, green: 0xE8 / 255, blue: 0xA4 / 255)
-  static let honig400 = Color(red: 0xED / 255, green: 0xD3 / 255, blue: 0x74 / 255)
-  static let honig900 = Color(red: 0x47 / 255, green: 0x3A / 255, blue: 0x17 / 255)
-  static let honigDunkel = Color(red: 0x3B / 255, green: 0x35 / 255, blue: 0x24 / 255)
-  static let flieder300 = Color(red: 0xCD / 255, green: 0xB4 / 255, blue: 0xDB / 255)
-  static let flieder900 = Color(red: 0x37 / 255, green: 0x26 / 255, blue: 0x3F / 255)
-  static let fliederDunkel = Color(red: 0x35 / 255, green: 0x2B / 255, blue: 0x3C / 255)
-  static let grau300 = Color(red: 0xC6 / 255, green: 0xCD / 255, blue: 0xC9 / 255)
-  static let grauRand = Color(red: 0x3A / 255, green: 0x40 / 255, blue: 0x3C / 255)
-  static let karte = Color(red: 0x29 / 255, green: 0x2D / 255, blue: 0x2B / 255)
-  static let textHell = Color(red: 0xEC / 255, green: 0xEF / 255, blue: 0xED / 255)
-  static let rot300 = Color(red: 0xF0 / 255, green: 0xB6 / 255, blue: 0xB1 / 255)
-}
-
-extension Font {
-  static func nunito(_ groesse: CGFloat) -> Font {
-    .custom("NunitoExtraLight-Regular", size: groesse)
-  }
-  static func nunitoBold(_ groesse: CGFloat) -> Font {
-    .custom("NunitoExtraLight-Bold", size: groesse)
-  }
-}
+// Design-System „Minze & Honig 2.0“: Farben und Schrift aus MhUhr.swift
+// (dunkle Rollen, Figtree). Aufbau der Uhr unverändert. Farbe ist Signal:
+// neutrale Flächen, Datenfarben nur an den Symbolen (Stillen Minze,
+// Flasche Honig, Brei/Wasser Flieder), gewählte Option selectedBg,
+// Hauptaktion primary.
 
 /// Alle Blätter laufen bewusst über **einen** `.sheet`-Modifier: mehrere
 /// `.sheet`-Modifier an derselben View sind in SwiftUI nicht zugesichert, in
@@ -87,89 +61,93 @@ struct ContentView: View {
         if store.isLoading { ProgressView() }
       }
       .sheet(item: $activeSheet) { sheet in
-        switch sheet {
-        case .time:
-          TimePicker(initialDate: selectedTime ?? .now) { date in
-            selectedTime = date
-            activeSheet = nil
-          }
+        Group {
+          switch sheet {
+          case .time:
+            TimePicker(initialDate: selectedTime ?? .now) { date in
+              selectedTime = date
+              activeSheet = nil
+            }
 
-        case .newBottle:
-          BottlePicker(
-            title: "Flasche",
-            values: Array(stride(from: 10, through: 300, by: 10)),
-            initialValue: 90,
-            initialBottleType: "Pre"
-          ) { amount, bottleType in
-            activeSheet = nil
-            store.add(
-              side: "Flasche",
-              amount: amount,
-              bottleType: bottleType,
-              at: selectedTime
-            )
-            selectedTime = nil
-          }
-
-        case .newMenge(let side):
-          ValuePicker(
-            title: side,
-            unit: einheit(fuer: side),
-            values: Array(stride(from: 10, through: 300, by: 10)),
-            initialValue: side == "Brei" ? 90 : 30
-          ) { amount in
-            activeSheet = nil
-            store.add(side: side, amount: amount, at: selectedTime)
-            selectedTime = nil
-          }
-
-        case .connection:
-          ConnectionView(store: store)
-
-        case .edit(let entry):
-          if entry.side == "Flasche" {
-            let amount = entry.amount ?? 0
+          case .newBottle:
             BottlePicker(
-              title: entryTitle(for: entry),
-              values: Self.values(
-                Array(stride(from: 0, through: 300, by: 10)), including: amount),
-              initialValue: amount,
-              initialBottleType: entry.bottleType ?? "Pre"
-            ) { value, bottleType in
+              title: "Flasche",
+              values: Array(stride(from: 10, through: 300, by: 10)),
+              initialValue: 90,
+              initialBottleType: "Pre"
+            ) { amount, bottleType in
               activeSheet = nil
-              store.update(entry, value: value, bottleType: bottleType)
+              store.add(
+                side: "Flasche",
+                amount: amount,
+                bottleType: bottleType,
+                at: selectedTime
+              )
+              selectedTime = nil
             }
-          } else if hatMenge(entry.side) {
-            // Brei/Wasser: Menge ändern, ohne Flaschen-Art.
-            let amount = entry.amount ?? 0
+
+          case .newMenge(let side):
             ValuePicker(
-              title: entry.side,
-              unit: entry.unit ?? einheit(fuer: entry.side),
-              values: Self.values(
-                Array(stride(from: 0, through: 300, by: 10)), including: amount),
-              initialValue: amount
-            ) { value in
+              title: side,
+              unit: einheit(fuer: side),
+              values: Array(stride(from: 10, through: 300, by: 10)),
+              initialValue: side == "Brei" ? 90 : 30
+            ) { amount in
               activeSheet = nil
-              store.update(entry, value: value)
+              store.add(side: side, amount: amount, at: selectedTime)
+              selectedTime = nil
             }
-          } else {
-            let duration = entry.duration ?? 0
-            ValuePicker(
-              title: entry.side,
-              unit: "Min.",
-              values: Self.values(Array(0...120), including: duration),
-              initialValue: duration
-            ) { value in
-              activeSheet = nil
-              store.update(entry, value: value)
+
+          case .connection:
+            ConnectionView(store: store)
+
+          case .edit(let entry):
+            if entry.side == "Flasche" {
+              let amount = entry.amount ?? 0
+              BottlePicker(
+                title: entryTitle(for: entry),
+                values: Self.values(
+                  Array(stride(from: 0, through: 300, by: 10)), including: amount),
+                initialValue: amount,
+                initialBottleType: entry.bottleType ?? "Pre"
+              ) { value, bottleType in
+                activeSheet = nil
+                store.update(entry, value: value, bottleType: bottleType)
+              }
+            } else if hatMenge(entry.side) {
+              // Brei/Wasser: Menge ändern, ohne Flaschen-Art.
+              let amount = entry.amount ?? 0
+              ValuePicker(
+                title: entry.side,
+                unit: entry.unit ?? einheit(fuer: entry.side),
+                values: Self.values(
+                  Array(stride(from: 0, through: 300, by: 10)), including: amount),
+                initialValue: amount
+              ) { value in
+                activeSheet = nil
+                store.update(entry, value: value)
+              }
+            } else {
+              let duration = entry.duration ?? 0
+              ValuePicker(
+                title: entry.side,
+                unit: "Min.",
+                values: Self.values(Array(0...120), including: duration),
+                initialValue: duration
+              ) { value in
+                activeSheet = nil
+                store.update(entry, value: value)
+              }
             }
           }
         }
+        .font(.figtree(16))
       }
       .onChange(of: scenePhase) { _, phase in
         if phase == .active { store.refresh() }
       }
     }
+    .font(.figtree(16))
   }
 
   private var lastEntry: some View {
@@ -177,26 +155,26 @@ struct ContentView: View {
       if let entry = store.entries.first {
         VStack(spacing: 2) {
           Text("Letzter Eintrag")
-            .font(.nunito(11))
-            .foregroundStyle(.secondary)
+            .font(.figtree(11))
+            .foregroundStyle(MhUhr.textSecondary)
           HStack(spacing: 5) {
             Image(systemName: icon(for: entry.side))
               .foregroundStyle(color(for: entry.side))
-            Text(entryTitle(for: entry)).font(.nunitoBold(15))
+            Text(entryTitle(for: entry)).font(.figtreeSemiBold(15))
             Text(entry.date, style: .time)
-              .font(.nunitoBold(15))
+              .font(.figtreeSemiBold(15))
               .monospacedDigit()
           }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
-        .background(subtleBackground(for: entry.side), in: RoundedRectangle(cornerRadius: 16))
+        .background(MhUhr.surface, in: RoundedRectangle(cornerRadius: 16))
       } else {
         Text("Noch kein Eintrag")
-          .font(.nunitoBold(15))
+          .font(.figtreeSemiBold(15))
           .frame(maxWidth: .infinity)
           .padding(.vertical, 10)
-          .background(MhW.karte, in: RoundedRectangle(cornerRadius: 16))
+          .background(MhUhr.surface, in: RoundedRectangle(cornerRadius: 16))
       }
     }
   }
@@ -209,9 +187,9 @@ struct ContentView: View {
         Label("Jetzt", systemImage: selectedTime == nil ? "checkmark.circle.fill" : "clock")
           .frame(maxWidth: .infinity, minHeight: 32)
           .background(
-            selectedTime == nil ? MhW.minze300 : MhW.karte,
+            selectedTime == nil ? MhUhr.selectedBg : MhUhr.surface,
             in: RoundedRectangle(cornerRadius: 16))
-          .foregroundStyle(selectedTime == nil ? MhW.minze900 : .secondary)
+          .foregroundStyle(selectedTime == nil ? MhUhr.onSelected : MhUhr.textSecondary)
       }
 
       Button {
@@ -220,17 +198,17 @@ struct ContentView: View {
         VStack(spacing: 1) {
           Text("Uhrzeit")
           if let selectedTime {
-            Text(selectedTime, style: .time).font(.nunito(11)).monospacedDigit()
+            Text(selectedTime, style: .time).font(.figtree(11)).monospacedDigit()
           }
         }
         .frame(maxWidth: .infinity, minHeight: 32)
         .background(
-          selectedTime == nil ? MhW.karte : MhW.minze300,
+          selectedTime == nil ? MhUhr.surface : MhUhr.selectedBg,
           in: RoundedRectangle(cornerRadius: 16))
-        .foregroundStyle(selectedTime == nil ? .secondary : MhW.minze900)
+        .foregroundStyle(selectedTime == nil ? MhUhr.textSecondary : MhUhr.onSelected)
       }
     }
-    .font(.nunitoBold(12))
+    .font(.figtreeMedium(12))
     .buttonStyle(.plain)
   }
 
@@ -239,13 +217,13 @@ struct ContentView: View {
       HStack(spacing: 6) {
         ActionButton(
           title: "Links", systemImage: "chevron.left",
-          flaeche: MhW.minze300, inhalt: MhW.minze900
+          symbolFarbe: MhUhr.data1
         ) {
           add(side: "Links")
         }
         ActionButton(
           title: "Rechts", systemImage: "chevron.right",
-          flaeche: MhW.flieder300, inhalt: MhW.flieder900
+          symbolFarbe: MhUhr.data1
         ) {
           add(side: "Rechts")
         }
@@ -253,13 +231,13 @@ struct ContentView: View {
       HStack(spacing: 6) {
         ActionButton(
           title: "Beidseitig", systemImage: "arrow.left.arrow.right",
-          flaeche: MhW.grauRand, inhalt: MhW.textHell
+          symbolFarbe: MhUhr.data1
         ) {
           add(side: "Beidseitig")
         }
         ActionButton(
           title: "Flasche", systemImage: "waterbottle",
-          flaeche: MhW.honig300, inhalt: MhW.honig900
+          symbolFarbe: MhUhr.data2
         ) {
           activeSheet = .newBottle
         }
@@ -269,13 +247,13 @@ struct ContentView: View {
         HStack(spacing: 6) {
           ActionButton(
             title: "Brei", systemImage: "fork.knife",
-            flaeche: MhW.honig400, inhalt: MhW.honig900
+            symbolFarbe: MhUhr.data3
           ) {
             activeSheet = .newMenge(side: "Brei")
           }
           ActionButton(
             title: "Wasser", systemImage: "drop.fill",
-            flaeche: MhW.grauRand, inhalt: MhW.textHell
+            symbolFarbe: MhUhr.data3
           ) {
             activeSheet = .newMenge(side: "Wasser")
           }
@@ -290,8 +268,8 @@ struct ContentView: View {
     if let message = store.errorMessage {
       VStack(spacing: 6) {
         Text(message)
-          .font(.nunito(13))
-          .foregroundStyle(MhW.rot300)
+          .font(.figtree(13))
+          .foregroundStyle(MhUhr.danger)
           .multilineTextAlignment(.center)
         Button(action: store.refresh) {
           Label("Erneut verbinden", systemImage: "arrow.clockwise")
@@ -307,8 +285,8 @@ struct ContentView: View {
   private var noticeMessage: some View {
     if let notice = store.notice {
       Text(notice)
-        .font(.nunito(11))
-        .foregroundStyle(.secondary)
+        .font(.figtree(11))
+        .foregroundStyle(MhUhr.textSecondary)
         .multilineTextAlignment(.center)
     }
   }
@@ -320,23 +298,23 @@ struct ContentView: View {
       activeSheet = .connection
     } label: {
       Label(store.statusText, systemImage: store.connection == nil ? "iphone" : "link")
-        .font(.nunito(11))
+        .font(.figtree(11))
         .frame(maxWidth: .infinity)
     }
     .buttonStyle(.bordered)
-    .tint(store.connection == nil ? .gray : MhW.minze300)
+    .tint(store.connection == nil ? .gray : MhUhr.link)
     .padding(.top, 8)
   }
 
   private var history: some View {
     VStack(alignment: .leading, spacing: 6) {
       Text("Letzte Einträge")
-        .font(.nunitoBold(15))
+        .font(.figtreeSemiBold(15))
         .padding(.top, 8)
 
       if store.entries.isEmpty {
         Text("Noch keine Einträge")
-          .foregroundStyle(.secondary)
+          .foregroundStyle(MhUhr.textSecondary)
       } else {
         ForEach(store.entries) { entry in
           Button {
@@ -348,19 +326,19 @@ struct ContentView: View {
               VStack(alignment: .leading, spacing: 1) {
                 Text(entryTitle(for: entry))
                 Text(entry.date, style: .time)
-                  .font(.nunito(11))
-                  .foregroundStyle(.secondary)
+                  .font(.figtree(11))
+                  .foregroundStyle(MhUhr.textSecondary)
               }
               Spacer()
               Text(valueText(for: entry))
-                .font(.nunito(12))
+                .font(.figtree(12))
                 .monospacedDigit()
               Image(systemName: "slider.horizontal.3")
-                .font(.nunito(11))
-                .foregroundStyle(.secondary)
+                .font(.figtree(11))
+                .foregroundStyle(MhUhr.textSecondary)
             }
             .padding(8)
-            .background(MhW.karte, in: RoundedRectangle(cornerRadius: 12))
+            .background(MhUhr.surface, in: RoundedRectangle(cornerRadius: 12))
           }
           .buttonStyle(.plain)
         }
@@ -410,25 +388,12 @@ struct ContentView: View {
     }
   }
 
+  /// Datenfarbe wie im Web: Stillen Minze, Flasche Honig, Brei/Wasser Flieder.
   private func color(for side: String) -> Color {
     switch side {
-    case "Links": MhW.minze300
-    case "Rechts": MhW.flieder300
-    case "Beidseitig": MhW.grau300
-    case "Brei": MhW.honig400
-    case "Wasser": MhW.grau300
-    default: MhW.honig300
-    }
-  }
-
-  /// Zarte, abgedunkelte Fläche hinter der Letzter-Eintrag-Karte.
-  private func subtleBackground(for side: String) -> Color {
-    switch side {
-    case "Links": MhW.minzeDunkel
-    case "Rechts": MhW.fliederDunkel
-    case "Beidseitig": MhW.karte
-    case "Wasser": MhW.karte
-    default: MhW.honigDunkel
+    case "Links", "Rechts", "Beidseitig": MhUhr.data1
+    case "Brei", "Wasser": MhUhr.data3
+    default: MhUhr.data2
     }
   }
 }
@@ -445,19 +410,19 @@ private struct ConnectionView: View {
     ScrollView {
       VStack(spacing: 8) {
         Text("Server-Verbindung")
-          .font(.nunitoBold(15))
+          .font(.figtreeSemiBold(15))
 
         Text(store.statusText)
-          .font(.nunito(15))
-          .foregroundStyle(connected ? MhW.minze300 : .secondary)
+          .font(.figtree(15))
+          .foregroundStyle(connected ? MhUhr.link : MhUhr.textSecondary)
 
         Text(
           connected
             ? "Anfragen gehen direkt an den Server. Ist er nicht erreichbar, springt die Uhr automatisch auf das iPhone um."
             : "Alle Anfragen laufen über das iPhone. Ist dort ein Server eingerichtet, kann die Uhr die Verbindung übernehmen."
         )
-        .font(.nunito(11))
-        .foregroundStyle(.secondary)
+        .font(.figtree(11))
+        .foregroundStyle(MhUhr.textSecondary)
         .multilineTextAlignment(.center)
 
         if store.isLoading {
@@ -466,8 +431,8 @@ private struct ConnectionView: View {
 
         if let message = store.errorMessage {
           Text(message)
-            .font(.nunito(11))
-            .foregroundStyle(MhW.rot300)
+            .font(.figtree(11))
+            .foregroundStyle(MhUhr.danger)
             .multilineTextAlignment(.center)
         }
 
@@ -481,8 +446,8 @@ private struct ConnectionView: View {
           .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
-        .tint(MhW.minze300)
-        .foregroundStyle(MhW.minze900)
+        .tint(MhUhr.primary)
+        .foregroundStyle(MhUhr.onPrimary)
         .disabled(store.isLoading)
 
         if connected {
@@ -504,22 +469,23 @@ private struct ConnectionView: View {
   }
 }
 
+/// Schnellaktion: neutrale Fläche, Text in Textfarbe, das Symbol trägt die
+/// Datenfarbe der Seite.
 private struct ActionButton: View {
   let title: String
   let systemImage: String
-  let flaeche: Color
-  let inhalt: Color
+  let symbolFarbe: Color
   let action: () -> Void
 
   var body: some View {
     Button(action: action) {
       VStack(spacing: 3) {
-        Image(systemName: systemImage).font(.title3)
-        Text(title).font(.nunitoBold(11)).lineLimit(1).minimumScaleFactor(0.75)
+        Image(systemName: systemImage).font(.title3).foregroundStyle(symbolFarbe)
+        Text(title).font(.figtreeMedium(11)).lineLimit(1).minimumScaleFactor(0.75)
       }
       .frame(maxWidth: .infinity, minHeight: 48)
-      .background(flaeche, in: RoundedRectangle(cornerRadius: 12))
-      .foregroundStyle(inhalt)
+      .background(MhUhr.surface, in: RoundedRectangle(cornerRadius: 12))
+      .foregroundStyle(MhUhr.textStrong)
     }
   }
 }
@@ -540,8 +506,8 @@ private struct TimePicker: View {
         .labelsHidden()
       Button("Übernehmen") { onSave(date) }
         .buttonStyle(.borderedProminent)
-        .tint(MhW.minze300)
-        .foregroundStyle(MhW.minze900)
+        .tint(MhUhr.primary)
+        .foregroundStyle(MhUhr.onPrimary)
     }
   }
 }
@@ -629,7 +595,7 @@ private struct BottlePicker: View {
           ForEach(["Pre", "Mutter"], id: \.self) { type in
             Button(type) { bottleType = type }
               .buttonStyle(.bordered)
-              .tint(bottleType == type ? MhW.minze300 : .gray)
+              .tint(bottleType == type ? MhUhr.link : .gray)
               .frame(maxWidth: .infinity)
           }
         }
@@ -670,7 +636,7 @@ private struct FreeValueField: View {
         Text("Übernehmen")
         Spacer()
         Text("\(max(0, value)) \(unit)")
-          .foregroundStyle(MhW.minze300)
+          .foregroundStyle(MhUhr.link)
           .monospacedDigit()
       }
     }
@@ -690,7 +656,7 @@ private struct SelectableRow: View {
         Spacer()
         if isSelected {
           Image(systemName: "checkmark")
-            .foregroundStyle(MhW.minze300)
+            .foregroundStyle(MhUhr.link)
         }
       }
     }
