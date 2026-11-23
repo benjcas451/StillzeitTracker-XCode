@@ -158,6 +158,11 @@ struct HomeView: View {
       }
       .scrollDismissesKeyboard(.interactively)
       .refreshable { model.aktualisieren() }
+      // Ohne Navigationsleiste liefe der Inhalt beim Scrollen unter die
+      // Statusleiste; eine Fläche in Grundfarbe deckt sie ab.
+      .safeAreaInset(edge: .top, spacing: 0) {
+        Color.clear.frame(height: 0).background(Mh.bg)
+      }
     }
   }
 
@@ -239,7 +244,6 @@ struct HomeView: View {
         Text("Eintrag anlegen")
       }
       .buttonStyle(MhHauptButtonStil(breit: true))
-      .disabled(seite == nil)
     }
   }
 
@@ -257,7 +261,10 @@ struct HomeView: View {
   /// die Schnell-Eingabe samt Dialogen: Flasche mit Menge und Art, Brei/Wasser
   /// mit Menge, Stillen optional mit Dauer.
   private func anlegen() {
-    guard let gewaehlt = seite else { return }
+    guard let gewaehlt = seite else {
+      formHinweis = "Bitte zuerst eine Seite wählen"
+      return
+    }
     if gewaehlt.hatMenge {
       guard let menge = Int(mengeText.trimmingCharacters(in: .whitespaces)), menge >= 0 else {
         formHinweis = "Bitte eine gültige Menge eingeben (0 oder mehr)"
