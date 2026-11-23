@@ -6,6 +6,8 @@ struct StillzeitApp: App {
   init() {
     NunitoFont.registrieren()
     AppSettings.migrationAusfuehren()
+    // Nur im UI-Test für Bildschirmfotos (Launch-Argument): Testdaten.
+    Bildschirmfotos.vorbereiten()
     // Ohne mindestens eine Datei blendet iOS den App-Ordner in der
     // „Dateien“-App aus – dort liegen aber client.crt/client.key.
     AppOrdner.sichtbarMachen()

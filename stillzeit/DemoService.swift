@@ -194,21 +194,30 @@ final class DemoService: EntryService, @unchecked Sendable {
 
   /// Ersetzt den gesamten Bestand durch [rows] (Backup-Restore), transaktional.
   func replaceAll(_ rows: [EntryRow]) async throws {
-    try await auf { db in
-      try self.ausfuehren(db, "BEGIN")
-      do {
-        try self.ausfuehren(db, "DELETE FROM entries")
-        for row in rows {
-          try self.ausfuehren(
-            db,
-            "INSERT INTO entries(id, create_time, seite, menge, flaschen_art, dauer_minuten) VALUES(?,?,?,?,?,?)",
-            parameter: [row.id, row.createTime, row.seite, row.menge, row.flaschenArt, row.dauerMinuten])
-        }
-        try self.ausfuehren(db, "COMMIT")
-      } catch {
-        try? self.ausfuehren(db, "ROLLBACK")
-        throw error
+    try await auf { db in try self.ersetze(db, rows) }
+  }
+
+  /// Nur für die Bildschirmfotos im UI-Test (siehe `Bildschirmfotos`):
+  /// ersetzt den Bestand sofort und synchron auf der Datenbank-Queue, damit
+  /// die Oberfläche beim ersten Laden schon die erfundenen Testdaten sieht.
+  func ersetzeSofort(_ rows: [EntryRow]) throws {
+    try queue.sync { try ersetze(try datenbank(), rows) }
+  }
+
+  private func ersetze(_ db: OpaquePointer, _ rows: [EntryRow]) throws {
+    try ausfuehren(db, "BEGIN")
+    do {
+      try ausfuehren(db, "DELETE FROM entries")
+      for row in rows {
+        try ausfuehren(
+          db,
+          "INSERT INTO entries(id, create_time, seite, menge, flaschen_art, dauer_minuten) VALUES(?,?,?,?,?,?)",
+          parameter: [row.id, row.createTime, row.seite, row.menge, row.flaschenArt, row.dauerMinuten])
       }
+      try ausfuehren(db, "COMMIT")
+    } catch {
+      try? ausfuehren(db, "ROLLBACK")
+      throw error
     }
   }
 
