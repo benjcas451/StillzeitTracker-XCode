@@ -63,6 +63,9 @@ final class ScreenshotTests: XCTestCase {
       "-MhBildschirmfotos", "1",
       "-data_source_mode", "demo",
       "-brei_wasser_aktiviert", "YES",
+      // Deutsch wie auf den Geräten der Familie (Datum, 24-Stunden-Uhr).
+      "-AppleLanguages", "(de)",
+      "-AppleLocale", "de_DE",
     ]
     app.launch()
     _ = app.staticTexts.matching(NSPredicate(format: "label == 'Links'")).firstMatch
