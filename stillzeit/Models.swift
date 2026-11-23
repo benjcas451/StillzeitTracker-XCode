@@ -33,18 +33,6 @@ enum Seite: String, CaseIterable, Identifiable, Codable {
     }
   }
 
-  /// SF-Symbol analog zu den Material-Icons der Android-App.
-  var symbol: String {
-    switch self {
-    case .links: "chevron.left"
-    case .rechts: "chevron.right"
-    case .beidseitig: "arrow.left.arrow.right"
-    case .flasche: "waterbottle"
-    case .brei: "fork.knife"
-    case .wasser: "drop.fill"
-    }
-  }
-
   /// Unbekannte Werte liefern nil – Aufrufer blenden solche Einträge aus
   /// (Listen) bzw. melden einen Fehler (Watch-Anfragen), statt sie wie
   /// früher stillschweigend als „Links“ auszugeben.
